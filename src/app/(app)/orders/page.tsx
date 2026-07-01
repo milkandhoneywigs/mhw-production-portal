@@ -33,14 +33,32 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
   else if (bucket === 'overdue') query = query.lt('expected_completion_date', new Date().toISOString());
 
   const { data } = await query;
-  const orders = (data ?? []) as OrderWithRelations[];
+  let orders = (data ?? []) as OrderWithRelations[];
+
+  // Free-text search across order number, customer, style and supplier code.
+  const q = (searchParams.q || '').trim().toLowerCase();
+  if (q) {
+    orders = orders.filter((o) =>
+      [o.order_number, o.customer?.full_name, o.internal_style_name, o.supplier_style_code, o.customer_facing_product_name, o.supplier?.name]
+        .some((v) => (v || '').toString().toLowerCase().includes(q)),
+    );
+  }
 
   return (
     <>
       <PageHeader
         title="Production Orders"
-        subtitle={bucket ? `Filtered: ${bucket.replace('_', ' ')}` : 'All orders'}
-        action={<Link href="/orders/new" className="btn-primary">Add Order</Link>}
+        subtitle={q ? `Search "${q}" — ${orders.length} result(s)` : bucket ? `Filtered: ${bucket.replace('_', ' ')}` : `All orders (${orders.length})`}
+        action={
+          <div className="flex items-center gap-2">
+            <form method="get" className="flex items-center gap-2">
+              {bucket && <input type="hidden" name="bucket" value={bucket} />}
+              <input name="q" defaultValue={searchParams.q ?? ''} placeholder="Search order #, customer, style…" className="input w-64" />
+              <button type="submit" className="btn-secondary">Search</button>
+            </form>
+            <Link href="/orders/new" className="btn-primary">Add Order</Link>
+          </div>
+        }
       />
 
       {orders.length === 0 ? (
