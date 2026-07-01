@@ -191,8 +191,8 @@ export async function POST(req: NextRequest) {
       supplier_order_length: supplierLength,
       cap_style: matchedMapping.default_cap_style ?? null,
       cap_size: capSize,
-      // Data rules: Peruvian hair + 150% density unless specified.
-      density: clean(prop(/density/i)) ?? matchedMapping.default_density ?? '150%',
+      // Data rules: Peruvian hair + 150% density unless a note specifies otherwise.
+      density: clean(prop(/density/i)) ?? '150%',
       hair_type: matchedMapping.default_hair_type ?? 'human hair',
       colour_notes: colourNotes,
       production_notes: 'Peruvian hair, 150% density unless specified.',

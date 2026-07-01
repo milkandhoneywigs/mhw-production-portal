@@ -98,7 +98,8 @@ export async function createManualOrder(formData: FormData): Promise<{ error?: s
       supplier_order_length: supplierLength,
       cap_style: s(formData, 'cap_style') ?? mapping?.default_cap_style ?? null,
       cap_size: s(formData, 'cap_size'),
-      density: s(formData, 'density') ?? mapping?.default_density ?? null,
+      // Always 150% unless the form/order specifies otherwise.
+      density: s(formData, 'density') ?? '150%',
       hair_type: s(formData, 'hair_type') ?? mapping?.default_hair_type ?? 'human hair',
       colour_notes: s(formData, 'colour_notes'),
       production_notes: s(formData, 'production_notes'),

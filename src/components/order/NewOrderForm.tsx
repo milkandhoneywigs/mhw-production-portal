@@ -107,7 +107,7 @@ export function NewOrderForm({ mappings, suppliers, isAdmin }: { mappings: Produ
         </div>
         <div><label className="label">Cap style</label><input name="cap_style" className="input" /></div>
         <div><label className="label">Cap size</label><input name="cap_size" className="input" /></div>
-        <div><label className="label">Density</label><input name="density" className="input" /></div>
+        <div><label className="label">Density</label><input name="density" className="input" defaultValue="150%" /><p className="text-xs text-muted mt-1">Always 150% unless the order specifies otherwise.</p></div>
         <div><label className="label">Hair type</label><input name="hair_type" className="input" defaultValue="human hair" /></div>
         <div className="md:col-span-2"><label className="label">Colour notes</label><input name="colour_notes" className="input" /></div>
         <div className="md:col-span-2"><label className="label">Production notes (supplier can see)</label><textarea name="production_notes" className="input" rows={2} /></div>
