@@ -49,9 +49,14 @@ export async function createManualOrder(formData: FormData): Promise<{ error?: s
   const lenResult = calculateSupplierLength(orderedLength);
   const supplierLength = overrideLen ?? lenResult.supplierLength;
 
+  // CUSTOM COLOUR orders must be confirmed with the supplier before payment /
+  // production — always flag them for manual review.
+  const isCustomColour = (styleName || '').toUpperCase().includes('CUSTOM COLOUR')
+    || (s(formData, 'colour_notes') || '').toUpperCase().includes('CUSTOM COLOUR');
+
   // If made-to-order and we could not derive a length and staff did not override,
   // keep it as needs_review so nobody guesses.
-  const needsReview = requestedType === 'made_to_order' && !overrideLen && classification.needsReview;
+  const needsReview = isCustomColour || (requestedType === 'made_to_order' && !overrideLen && classification.needsReview);
   const orderType = needsReview ? 'needs_review' : classification.orderType;
   const status: OrderStatus = needsReview ? 'manager_review_required' : classification.status;
 
@@ -96,7 +101,10 @@ export async function createManualOrder(formData: FormData): Promise<{ error?: s
       hair_type: s(formData, 'hair_type') ?? mapping?.default_hair_type ?? 'human hair',
       colour_notes: s(formData, 'colour_notes'),
       production_notes: s(formData, 'production_notes'),
-      internal_notes: s(formData, 'internal_notes'),
+      internal_notes: isCustomColour
+        ? `CUSTOM COLOUR - confirm with supplier before payment/production. ${s(formData, 'internal_notes') ?? ''}`.trim()
+        : s(formData, 'internal_notes'),
+      risk_level: isCustomColour ? 'high' : 'low',
       shipping_destination: classification.shippingDestination,
     })
     .select('id')
