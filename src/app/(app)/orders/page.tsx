@@ -66,6 +66,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
               <input name="q" defaultValue={searchParams.q ?? ''} placeholder="Search order #, customer, style…" className="input w-64" />
               <button type="submit" className="btn-secondary">Search</button>
             </form>
+            <Link href="/orders/restock" className="btn-secondary">Store Restock Order</Link>
             <Link href="/orders/new" className="btn-primary">Add Order</Link>
           </div>
         }

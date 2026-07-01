@@ -4,6 +4,7 @@ import { PageHeader, Section, EmptyState } from '@/components/ui';
 import { StageBadge, OrderTypeBadge } from '@/components/Badges';
 import { SupplierActions } from '@/components/supplier/SupplierActions';
 import { OrderMessages } from '@/components/order/OrderMessages';
+import { parseRestock, showroomLabel, totalUnits } from '@/lib/business/restock';
 import type { OrderMessage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -51,12 +52,30 @@ export default async function SupplierDashboard() {
         return (
           <Section key={bucket.title} title={`${bucket.title} (${items.length})`}>
             <div className="grid md:grid-cols-2 gap-3">
-              {items.map((o) => (
+              {items.map((o) => {
+                const restock = o.order_type === 'stock' ? parseRestock(o.production_notes) : null;
+                return (
                 <div key={o.id} className="card p-4">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="font-medium">{o.order_number}</span>
                     <div className="flex gap-2"><OrderTypeBadge type={o.order_type} /><StageBadge status={o.status} /></div>
                   </div>
+                  {restock ? (
+                    <div>
+                      <p className="text-sm font-medium mb-1">Store restock — {showroomLabel(restock.destination)} <span className="text-muted font-normal">({restock.items.length} styles · {totalUnits(restock.items)} units)</span></p>
+                      <table className="w-full text-xs mt-1">
+                        <thead className="text-muted"><tr className="text-left"><th className="py-0.5">Style</th><th>SKU</th><th>Length</th><th>Cap</th><th>Qty</th></tr></thead>
+                        <tbody>
+                          {restock.items.map((it, idx) => (
+                            <tr key={idx} className="border-t border-beige/60">
+                              <td className="py-0.5 font-medium">{it.style_name}</td><td>{it.supplier_style_code ?? '-'}</td><td>{it.length ?? '-'}</td><td>{it.cap_size ?? '-'}</td><td className="tabular-nums">{it.quantity}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <p className="text-xs mt-2 font-medium text-ink">Produce and ship this restock to the {showroomLabel(restock.destination)}. Add pricing below to send it back for payment.</p>
+                    </div>
+                  ) : (<>
                   <dl className="text-sm grid grid-cols-2 gap-x-3 gap-y-0.5">
                     <div><span className="text-muted">Code:</span> {o.supplier_style_code ?? '-'}</div>
                     <div><span className="text-muted">Style:</span> {o.internal_style_name ?? '-'}</div>
@@ -73,10 +92,12 @@ export default async function SupplierDashboard() {
                       ? 'Ship directly to customer via DHL. Do not ship to Milk & Honey showroom.'
                       : 'Produce and ship to the Milk & Honey showroom once complete. Do not ship directly to customer.'}
                   </p>
+                  </>)}
                   <SupplierActions orderId={o.id} isReadyMade={o.order_type === 'ready_made'} />
                   <OrderMessages orderId={o.id} messages={msgsByOrder[o.id] ?? []} meId={profile.id} compact />
                 </div>
-              ))}
+                );
+              })}
             </div>
           </Section>
         );

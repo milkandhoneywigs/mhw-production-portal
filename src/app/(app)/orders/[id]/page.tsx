@@ -8,6 +8,7 @@ import { DeleteOrderButton } from '@/components/order/DeleteOrderButton';
 import { calculateRiskLevel, isShipmentBlocked } from '@/lib/business/risk';
 import { OrderMessages } from '@/components/order/OrderMessages';
 import { SUPPLIER_INSTRUCTION_SHIPPING, STAGE_NOTE, STAGE_LABELS, STATUS_LABELS, stageOf } from '@/lib/constants';
+import { parseRestock, showroomLabel, totalUnits } from '@/lib/business/restock';
 import type { Order, Customer, Supplier, Invoice, Tracking, SupplierUpdate, OrderMessage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -50,8 +51,11 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   const eta = o.expected_completion_date;
   const overdue = !!eta && !o.production_complete_at && new Date(eta) < new Date();
   const etaDisplay = eta
-    ? <span className={overdue ? 'text-red-600 font-medium' : ''}>{eta}{overdue ? ' — OVERDUE (>40 business days)' : ''}</span>
+    ? <span className={overdue ? 'text-red-600 font-medium' : ''}>{eta}{overdue ? ' — OVERDUE (past ETA)' : ''}</span>
     : <span className="text-muted">not set</span>;
+
+  // Store restock orders carry their line-item sheet in production_notes.
+  const restock = o.order_type === 'stock' ? parseRestock(o.production_notes) : null;
 
   return (
     <>
@@ -72,6 +76,32 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: details */}
         <div className="lg:col-span-2 space-y-6">
+          {restock ? (
+            <div className="card p-5">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Store restock sheet</h2>
+              <dl>
+                <Row label="Destination" value={showroomLabel(restock.destination)} />
+                <Row label="Total" value={`${restock.items.length} styles · ${totalUnits(restock.items)} units`} />
+                <Row label="Estimated completion (ETA)" value={etaDisplay} />
+              </dl>
+              <table className="w-full mt-3 text-sm">
+                <thead className="bg-sand/60"><tr>
+                  <th className="th">Style</th><th className="th">SKU</th><th className="th">Length</th><th className="th">Cap size</th><th className="th">Qty</th>
+                </tr></thead>
+                <tbody className="divide-y divide-beige">
+                  {restock.items.map((it, idx) => (
+                    <tr key={idx}>
+                      <td className="td font-medium">{it.style_name}</td>
+                      <td className="td">{it.supplier_style_code ?? '-'}</td>
+                      <td className="td">{it.length ?? '-'}</td>
+                      <td className="td">{it.cap_size ?? '-'}</td>
+                      <td className="td tabular-nums">{it.quantity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
           <div className="card p-5">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Production details</h2>
             <dl>
@@ -92,6 +122,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                 : o.order_type === 'made_to_order' ? SUPPLIER_INSTRUCTION_SHIPPING.made_to_order : '-'} />
             </dl>
           </div>
+          )}
 
           <div className="card p-5">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Customer</h2>
