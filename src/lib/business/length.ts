@@ -34,8 +34,13 @@ export function parseLength(input: string | null | undefined): ParsedLength {
   if (!raw) {
     return { inches: null, isBob: false, needsReview: true, reason: 'No length provided', raw };
   }
+  // Bobs are a standard style (10 inch bob) — never flag them for review. We still
+  // pick up a specific inch value if one is stated, otherwise leave it to the
+  // bob default in calculateSupplierLength.
   if (BOB_HINTS.some((h) => lower.includes(h))) {
-    return { inches: null, isBob: true, needsReview: true, reason: 'Bob / short style — confirm length manually', raw };
+    const bobNums = lower.match(/\d+/g) ?? [];
+    const bobInches = bobNums.length === 1 ? parseInt(bobNums[0], 10) : null;
+    return { inches: bobInches, isBob: true, needsReview: false, raw };
   }
   if (UNCLEAR_HINTS.some((h) => lower.includes(h))) {
     return { inches: null, isBob: false, needsReview: true, reason: 'Custom / unclear measurement — confirm manually', raw };
@@ -71,6 +76,12 @@ export interface SupplierLengthResult {
 // safely convert, so the caller can set the order to needs_review.
 export function calculateSupplierLength(customerOrderedLength: string | null | undefined): SupplierLengthResult {
   const parsed = parseLength(customerOrderedLength);
+  // Bobs: same length for us and the supplier (no -2" rule). Default to a 10 inch
+  // bob when no specific inch is stated. Never needs review.
+  if (parsed.isBob) {
+    const label = parsed.inches !== null ? `${parsed.inches} inch bob` : '10 inch bob';
+    return { supplierLength: label, parsed, needsReview: false };
+  }
   if (parsed.needsReview || parsed.inches === null) {
     return { supplierLength: null, parsed, needsReview: true, reason: parsed.reason };
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
 import { classifyOrder } from '@/lib/business/classify';
 import { calculateSupplierLength } from '@/lib/business/length';
+import { etaFor } from '@/lib/business/eta';
 import type { OrderStatus } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
@@ -17,18 +18,6 @@ export const dynamic = 'force-dynamic';
 //
 // Auth: a shared secret in the `x-mhw-secret` header must match SHOPIFY_SYNC_SECRET.
 // -----------------------------------------------------------------------------
-
-// Order date + 40 business days (Mon–Fri) -> the ETA shown on each order.
-function addBusinessDays(start: Date, n: number): Date {
-  const d = new Date(start);
-  let added = 0;
-  while (added < n) {
-    d.setDate(d.getDate() + 1);
-    const day = d.getDay();
-    if (day !== 0 && day !== 6) added++;
-  }
-  return d;
-}
 
 const clean = (v: unknown): string | null => {
   const s = (v ?? '').toString().trim();
@@ -126,10 +115,18 @@ export async function POST(req: NextRequest) {
   const capSize = clean(prop(/cap\s*size/i)) ?? clean(prop(/^size$/i));
   const colourNotes = clean(prop(/colou?r/i));
 
+  // Bobs are a standard 10 inch bob (no -2" rule, never needs review). The "bob"
+  // signal can live in the style/title or the length — feed a bob-aware length in.
+  const styleTitle = `${matchedMapping.style_name ?? ''} ${matchedItem?.title ?? ''} ${matchedItem?.variant_title ?? ''}`;
+  const isBob = /\bbob\b/i.test(`${styleTitle} ${orderedLength ?? ''}`);
+  const lengthForCalc = isBob && !/bob/i.test(orderedLength ?? '')
+    ? `${orderedLength ?? ''} bob`.trim()
+    : orderedLength;
+
   // --- classify (order_type, status, shipping destination, -2" length) ---
   // Default to made-to-order; staff can flip to ready-made on review.
-  const classification = classifyOrder({ requestedType: 'made_to_order', customerOrderedLength: orderedLength });
-  const supplierLength = calculateSupplierLength(orderedLength).supplierLength;
+  const classification = classifyOrder({ requestedType: 'made_to_order', customerOrderedLength: lengthForCalc });
+  const supplierLength = calculateSupplierLength(lengthForCalc).supplierLength;
 
   // CUSTOM COLOUR must be confirmed with the supplier before payment/production.
   const haystack = [
@@ -174,7 +171,8 @@ export async function POST(req: NextRequest) {
   const createdAt = clean(payload?.created_at);
   const orderDate = createdAt ? new Date(createdAt) : new Date();
   const dateOrdered = orderDate.toISOString().slice(0, 10);
-  const eta = addBusinessDays(orderDate, 40).toISOString().slice(0, 10);
+  // Shopify orders are online -> 40 business day production lead time.
+  const eta = etaFor('online', orderDate);
 
   const internalNote = isCustomColour
     ? 'CUSTOM COLOUR - confirm with supplier before payment/production. Auto-imported from Shopify.'

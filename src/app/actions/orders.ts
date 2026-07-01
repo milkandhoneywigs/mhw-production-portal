@@ -7,6 +7,7 @@ import { requireStaff, requireProfile } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 import { classifyOrder } from '@/lib/business/classify';
 import { calculateSupplierLength } from '@/lib/business/length';
+import { etaFor } from '@/lib/business/eta';
 import type { OrderStatus } from '@/lib/constants';
 
 // Manual order numbers: MH-YYYYMMDD-XXXX (staff can also type their own).
@@ -49,10 +50,18 @@ export async function createManualOrder(formData: FormData): Promise<{ error?: s
     .eq('style_name', styleName)
     .maybeSingle();
 
+  // Bobs are a standard 10 inch bob (no -2" rule, never needs review). The "bob"
+  // signal can live in the style name (e.g. "CARTER BOB") or the length, so feed
+  // a bob-aware length into the length + classification logic.
+  const isBob = /\bbob\b/i.test(`${styleName ?? ''} ${orderedLength ?? ''}`);
+  const lengthForCalc = isBob && !/bob/i.test(orderedLength ?? '')
+    ? `${orderedLength ?? ''} bob`.trim()
+    : orderedLength;
+
   // Classification + length. A manual override wins; otherwise apply the -2" rule.
-  const classification = classifyOrder({ requestedType, customerOrderedLength: orderedLength });
+  const classification = classifyOrder({ requestedType, customerOrderedLength: lengthForCalc });
   const overrideLen = s(formData, 'supplier_order_length');
-  const lenResult = calculateSupplierLength(orderedLength);
+  const lenResult = calculateSupplierLength(lengthForCalc);
   const supplierLength = overrideLen ?? lenResult.supplierLength;
 
   // CUSTOM COLOUR orders must be confirmed with the supplier before payment /
@@ -86,12 +95,15 @@ export async function createManualOrder(formData: FormData): Promise<{ error?: s
 
   const orderNumber = s(formData, 'order_number') ?? generateOrderNumber();
 
+  // ETA: online = 40 business days, in-store = 20 business days.
+  const channel = s(formData, 'channel') === 'online' ? 'online' : 'instore';
+
   const { data: order, error: orderErr } = await supabase
     .from('orders')
     .insert({
       order_number: orderNumber,
       // Channel picked on the form: online = website/Shopify bucket, in-store = manual bucket.
-      source: s(formData, 'channel') === 'online' ? 'shopify' : 'manual',
+      source: channel === 'online' ? 'shopify' : 'manual',
       customer_id: customer.id,
       supplier_id: supplierId,
       order_type: orderType,
@@ -114,6 +126,7 @@ export async function createManualOrder(formData: FormData): Promise<{ error?: s
         : s(formData, 'internal_notes'),
       risk_level: isCustomColour ? 'high' : 'low',
       shipping_destination: classification.shippingDestination,
+      expected_completion_date: etaFor(channel),
     })
     .select('id')
     .single();
