@@ -158,3 +158,18 @@ export async function saveOrderFields(orderId: string, formData: FormData) {
   revalidatePath(`/orders/${orderId}`);
   return {};
 }
+
+// Delete an order (staff/admin). Cascades history/updates/invoices/tracking/qc/files.
+export async function deleteOrder(orderId: string) {
+  const profile = await requireStaff();
+  const supabase = createClient();
+  const { data: ord } = await supabase.from('orders').select('order_number').eq('id', orderId).single();
+  const { error } = await supabase.from('orders').delete().eq('id', orderId);
+  if (error) return { error: error.message };
+  await logAudit({
+    actorId: profile.id, action: 'order.delete', entityType: 'order', entityId: orderId,
+    metadata: { order_number: ord?.order_number },
+  });
+  revalidatePath('/orders');
+  redirect('/orders');
+}

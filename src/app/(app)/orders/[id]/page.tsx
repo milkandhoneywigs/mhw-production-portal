@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { StatusBadge, OrderTypeBadge, RiskBadge, Flag } from '@/components/Badges';
 import { InstructionButton } from '@/components/order/InstructionButton';
 import { StatusSelect } from '@/components/order/StatusSelect';
+import { DeleteOrderButton } from '@/components/order/DeleteOrderButton';
 import { calculateRiskLevel, isShipmentBlocked } from '@/lib/business/risk';
 import { SUPPLIER_INSTRUCTION_SHIPPING } from '@/lib/constants';
 import type { Order, Customer, Supplier, Invoice, Tracking, SupplierUpdate } from '@/lib/types';
@@ -42,6 +43,13 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   const risk = calculateRiskLevel(o, invs);
   const blocked = isShipmentBlocked(o, invs);
 
+  // ETA (order date + 40 business days). Flag when overdue and not complete.
+  const eta = o.expected_completion_date;
+  const overdue = !!eta && !o.production_complete_at && new Date(eta) < new Date();
+  const etaDisplay = eta
+    ? <span className={overdue ? 'text-red-600 font-medium' : ''}>{eta}{overdue ? ' — OVERDUE (>40 business days)' : ''}</span>
+    : <span className="text-muted">not set</span>;
+
   return (
     <>
       {/* Header */}
@@ -51,6 +59,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         <StatusBadge status={o.status} />
         <RiskBadge level={risk.level} />
         {blocked && <Flag tone="blocked">SHIPMENT BLOCKED</Flag>}
+        {overdue && <Flag tone="risk">OVERDUE</Flag>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -69,6 +78,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               <Row label="Hair type" value={o.hair_type} />
               <Row label="Colour notes" value={o.colour_notes} />
               <Row label="Production notes" value={o.production_notes} />
+              <Row label="Estimated completion (ETA)" value={etaDisplay} />
               <Row label="Shipping destination" value={o.shipping_destination.replace('_', ' ')} />
               <Row label="Supplier instruction" value={
                 o.order_type === 'ready_made' ? SUPPLIER_INSTRUCTION_SHIPPING.ready_made
@@ -143,6 +153,9 @@ export default async function OrderDetailPage({ params }: { params: { id: string
             <StatusSelect orderId={o.id} current={o.status} orderType={o.order_type} />
             <Row label="Supplier" value={(supplier as Supplier | null)?.name} />
             <InstructionButton orderId={o.id} />
+            <div className="pt-3 border-t border-beige">
+              <DeleteOrderButton orderId={o.id} orderNumber={o.order_number} />
+            </div>
           </div>
 
           <div className="card p-5">
