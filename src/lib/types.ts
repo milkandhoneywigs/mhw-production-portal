@@ -97,6 +97,7 @@ export interface Order {
   completed_at: string | null;
   last_customer_update_at: string | null;
   next_customer_update_due: string | null;
+  supplier_price: number | null; // total price added by supplier; drives the 50% deposit invoice
   created_at: string;
   updated_at: string;
 }

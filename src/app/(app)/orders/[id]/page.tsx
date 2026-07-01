@@ -21,7 +21,8 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export default async function OrderDetailPage({ params }: { params: { id: string } }) {
-  await requireStaff();
+  const profile = await requireStaff();
+  const isAdmin = profile.role === 'admin'; // supplier name is admin-only
   const supabase = createClient();
 
   const { data: order } = await supabase.from('orders').select('*').eq('id', params.id).single();
@@ -151,7 +152,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
           <div className="card p-5 space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Actions</h2>
             <StatusSelect orderId={o.id} current={o.status} orderType={o.order_type} />
-            <Row label="Supplier" value={(supplier as Supplier | null)?.name} />
+            {isAdmin && <Row label="Supplier" value={(supplier as Supplier | null)?.name} />}
             <InstructionButton orderId={o.id} />
             <div className="pt-3 border-t border-beige">
               <DeleteOrderButton orderId={o.id} orderNumber={o.order_number} />

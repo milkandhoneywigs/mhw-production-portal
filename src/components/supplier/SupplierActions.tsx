@@ -1,7 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import {
-  supplierConfirmOrder, supplierMarkProductionComplete, supplierAddUpdate, supplierUploadTracking,
+  supplierConfirmOrder, supplierMarkProductionComplete, supplierAddUpdate, supplierUploadTracking, supplierSetPrice,
 } from '@/app/actions/supplier';
 import { uploadInvoice } from '@/app/actions/invoices';
 
@@ -9,7 +9,7 @@ import { uploadInvoice } from '@/app/actions/invoices';
 // mark complete, upload tracking + invoices — and nothing else. RLS backs this up.
 export function SupplierActions({ orderId, isReadyMade }: { orderId: string; isReadyMade: boolean }) {
   const [pending, start] = useTransition();
-  const [open, setOpen] = useState<null | 'update' | 'tracking' | 'invoice'>(null);
+  const [open, setOpen] = useState<null | 'update' | 'tracking' | 'invoice' | 'price'>(null);
   const [msg, setMsg] = useState('');
   const run = (fn: () => Promise<unknown>) => start(async () => { await fn(); setOpen(null); setMsg(''); });
 
@@ -18,10 +18,22 @@ export function SupplierActions({ orderId, isReadyMade }: { orderId: string; isR
       <div className="flex flex-wrap gap-2">
         {!isReadyMade && <button className="btn-secondary text-xs" disabled={pending} onClick={() => run(() => supplierConfirmOrder(orderId))}>Confirm order</button>}
         {!isReadyMade && <button className="btn-secondary text-xs" disabled={pending} onClick={() => run(() => supplierMarkProductionComplete(orderId))}>Mark production complete</button>}
+        <button className="btn-primary text-xs" onClick={() => setOpen(open === 'price' ? null : 'price')}>Add price</button>
         <button className="btn-secondary text-xs" onClick={() => setOpen(open === 'update' ? null : 'update')}>Add update</button>
         <button className="btn-secondary text-xs" onClick={() => setOpen(open === 'tracking' ? null : 'tracking')}>Upload tracking</button>
         <button className="btn-secondary text-xs" onClick={() => setOpen(open === 'invoice' ? null : 'invoice')}>Upload invoice</button>
       </div>
+
+      {open === 'price' && (
+        <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          run(() => supplierSetPrice(orderId, Number(fd.get('price'))));
+        }}>
+          <input name="price" type="number" step="0.01" min="0" className="input text-sm w-32" placeholder="Total price $" required />
+          <button className="btn-primary text-xs" disabled={pending}>Add price &rarr; creates 50% deposit invoice</button>
+        </form>
+      )}
 
       {open === 'update' && (
         <div className="space-y-2">

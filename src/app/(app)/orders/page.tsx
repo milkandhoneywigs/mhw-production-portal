@@ -18,7 +18,8 @@ const BUCKET_STATUSES: Record<string, string[]> = {
 };
 
 export default async function OrdersPage({ searchParams }: { searchParams: { bucket?: string; q?: string } }) {
-  await requireStaff();
+  const profile = await requireStaff();
+  const isAdmin = profile.role === 'admin'; // supplier name is admin-only
   const supabase = createClient();
 
   let query = supabase
@@ -72,7 +73,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
                 <th className="th">Type</th>
                 <th className="th">Customer</th>
                 <th className="th">Style</th>
-                <th className="th">Supplier</th>
+                {isAdmin && <th className="th">Supplier</th>}
                 <th className="th">Status</th>
                 <th className="th">Flags</th>
               </tr>
@@ -90,7 +91,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
                     {o.internal_style_name ?? '-'}
                     {o.supplier_style_code && <div className="text-xs text-muted">{o.supplier_style_code}</div>}
                   </td>
-                  <td className="td">{o.supplier?.name ?? <span className="text-muted">Unassigned</span>}</td>
+                  {isAdmin && <td className="td">{o.supplier?.name ?? <span className="text-muted">Unassigned</span>}</td>}
                   <td className="td"><StatusBadge status={o.status} /></td>
                   <td className="td"><RiskBadge level={o.risk_level} /></td>
                 </tr>

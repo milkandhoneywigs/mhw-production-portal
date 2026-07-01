@@ -7,12 +7,15 @@ const STAFF_LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/orders', label: 'Production Orders' },
   { href: '/orders/new', label: 'Add Order' },
-  { href: '/billing', label: 'Billing' },
   { href: '/qc', label: 'QC Queue' },
   { href: '/customer-updates', label: 'Customer Updates' },
   { href: '/product-mappings', label: 'Product Mapping' },
 ];
-const ADMIN_LINKS = [{ href: '/settings/users', label: 'Users & Settings' }];
+// Billing is admin-only (not staff).
+const ADMIN_LINKS = [
+  { href: '/billing', label: 'Billing' },
+  { href: '/settings/users', label: 'Users & Settings' },
+];
 const SUPPLIER_LINKS = [{ href: '/supplier', label: 'My Orders' }];
 
 export function Nav({ role }: { role: Role }) {

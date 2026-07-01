@@ -7,7 +7,7 @@ import type { ProductMapping, Supplier } from '@/lib/types';
 // Add custom / manual order. Auto-fills supplier code from the selected style and
 // previews the supplier production length (customer length - 2"), flagging when
 // the length cannot be parsed (staff must then confirm).
-export function NewOrderForm({ mappings, suppliers }: { mappings: ProductMapping[]; suppliers: Supplier[] }) {
+export function NewOrderForm({ mappings, suppliers, isAdmin }: { mappings: ProductMapping[]; suppliers: Supplier[]; isAdmin: boolean }) {
   const [orderType, setOrderType] = useState<'ready_made' | 'made_to_order'>('made_to_order');
   const [style, setStyle] = useState('');
   const [length, setLength] = useState('');
@@ -102,13 +102,15 @@ export function NewOrderForm({ mappings, suppliers }: { mappings: ProductMapping
         <div className="md:col-span-2"><label className="label">Colour notes</label><input name="colour_notes" className="input" /></div>
         <div className="md:col-span-2"><label className="label">Production notes (supplier can see)</label><textarea name="production_notes" className="input" rows={2} /></div>
         <div className="md:col-span-2"><label className="label">Internal notes (staff only)</label><textarea name="internal_notes" className="input" rows={2} /></div>
-        <div>
-          <label className="label">Assign supplier</label>
-          <select name="supplier_id" className="input">
-            <option value="">Unassigned</option>
-            {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
+        {isAdmin && (
+          <div>
+            <label className="label">Assign supplier</label>
+            <select name="supplier_id" className="input">
+              <option value="">Unassigned</option>
+              {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        )}
         <div><label className="label">Order number (optional)</label><input name="order_number" className="input" placeholder="auto-generated if blank" /></div>
       </div>
 

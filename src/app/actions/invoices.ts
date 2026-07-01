@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { requireProfile, requireStaff } from '@/lib/auth';
+import { requireProfile, requireAdmin } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 import type { InvoiceType, PaymentMethod } from '@/lib/types';
 
@@ -14,6 +14,7 @@ export async function uploadInvoice(
   data: { invoice_type: InvoiceType; invoice_number?: string; amount?: number; currency?: string; file_url?: string },
 ) {
   const profile = await requireProfile();
+  if (profile.role === 'staff') return { error: 'Billing is for admin and supplier only.' };
   const supabase = createClient();
   const { data: ord } = await supabase.from('orders').select('supplier_id').eq('id', orderId).single();
 
@@ -45,7 +46,7 @@ export async function markInvoicePaid(
   invoiceId: string,
   data: { payment_method: PaymentMethod; payment_reference?: string },
 ) {
-  const profile = await requireStaff();
+  const profile = await requireAdmin();
   const supabase = createClient();
 
   const { data: inv, error: readErr } = await supabase

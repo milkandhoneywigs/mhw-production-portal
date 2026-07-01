@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireStaff } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Section, StatCard, EmptyState } from '@/components/ui';
 import { Flag } from '@/components/Badges';
@@ -14,7 +14,7 @@ type InvoiceRow = Invoice & { order?: { order_number: string; status: string } |
 function ageHours(iso: string) { return (Date.now() - new Date(iso).getTime()) / 3600000; }
 
 export default async function BillingPage() {
-  await requireStaff();
+  await requireAdmin();
   const supabase = createClient();
   const { data } = await supabase
     .from('invoices')

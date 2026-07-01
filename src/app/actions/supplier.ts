@@ -99,3 +99,35 @@ export async function supplierUploadTracking(
   revalidatePath('/supplier');
   return {};
 }
+
+// Supplier (or admin) adds the total price for an order. This AUTO-CREATES a 50%
+// deposit invoice for the admin to pay, and moves the order to the payment gate.
+// Pricing is admin/supplier only — staff cannot set prices.
+export async function supplierSetPrice(orderId: string, totalPrice: number) {
+  const profile = await requireProfile();
+  if (profile.role === 'staff') return { error: 'Pricing is for admin and supplier only.' };
+  if (!(totalPrice > 0)) return { error: 'Enter a valid price.' };
+  const supabase = createClient();
+  const ord = await orderSupplierId(supabase, orderId);
+  const deposit = Math.round((totalPrice / 2) * 100) / 100;
+
+  const { error: uErr } = await supabase.from('orders')
+    .update({ supplier_price: totalPrice, status: 'payment_required' }).eq('id', orderId);
+  if (uErr) return { error: uErr.message };
+
+  const { error } = await supabase.from('invoices').insert({
+    order_id: orderId, supplier_id: ord?.supplier_id ?? profile.supplier_id,
+    invoice_type: 'initial', amount: deposit, currency: 'AUD', status: 'payment_required',
+    uploaded_by: profile.id, invoice_number: `DEP-${orderId.slice(0, 8)}`,
+  });
+  if (error) return { error: error.message };
+
+  await supabase.from('supplier_updates').insert({
+    order_id: orderId, supplier_id: ord?.supplier_id, update_type: 'invoice_uploaded',
+    message: `Price added: $${totalPrice}. 50% deposit invoice ($${deposit}) created for payment.`,
+    created_by: profile.id,
+  });
+  await logAudit({ actorId: profile.id, action: 'supplier.set_price', entityType: 'order', entityId: orderId, metadata: { totalPrice, deposit } });
+  revalidatePath(`/orders/${orderId}`); revalidatePath('/supplier'); revalidatePath('/billing');
+  return {};
+}
