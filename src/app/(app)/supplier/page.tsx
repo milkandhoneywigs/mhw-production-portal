@@ -1,7 +1,7 @@
 import { requireSupplier } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Section, EmptyState } from '@/components/ui';
-import { StatusBadge, OrderTypeBadge } from '@/components/Badges';
+import { StageBadge, OrderTypeBadge } from '@/components/Badges';
 import { SupplierActions } from '@/components/supplier/SupplierActions';
 
 export const dynamic = 'force-dynamic';
@@ -48,7 +48,7 @@ export default async function SupplierDashboard() {
                 <div key={o.id} className="card p-4">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="font-medium">{o.order_number}</span>
-                    <div className="flex gap-2"><OrderTypeBadge type={o.order_type} /><StatusBadge status={o.status} /></div>
+                    <div className="flex gap-2"><OrderTypeBadge type={o.order_type} /><StageBadge status={o.status} /></div>
                   </div>
                   <dl className="text-sm grid grid-cols-2 gap-x-3 gap-y-0.5">
                     <div><span className="text-muted">Code:</span> {o.supplier_style_code ?? '-'}</div>

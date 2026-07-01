@@ -1,12 +1,12 @@
 import { notFound } from 'next/navigation';
 import { requireStaff } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
-import { StatusBadge, OrderTypeBadge, RiskBadge, Flag } from '@/components/Badges';
+import { StageBadge, StatusBadge, OrderTypeBadge, RiskBadge, Flag } from '@/components/Badges';
 import { InstructionButton } from '@/components/order/InstructionButton';
 import { StatusSelect } from '@/components/order/StatusSelect';
 import { DeleteOrderButton } from '@/components/order/DeleteOrderButton';
 import { calculateRiskLevel, isShipmentBlocked } from '@/lib/business/risk';
-import { SUPPLIER_INSTRUCTION_SHIPPING } from '@/lib/constants';
+import { SUPPLIER_INSTRUCTION_SHIPPING, STAGE_NOTE, stageOf } from '@/lib/constants';
 import type { Order, Customer, Supplier, Invoice, Tracking, SupplierUpdate } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -57,11 +57,12 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <h1 className="text-xl font-semibold">{o.order_number}</h1>
         <OrderTypeBadge type={o.order_type} />
-        <StatusBadge status={o.status} />
+        <StageBadge status={o.status} />
         <RiskBadge level={risk.level} />
         {blocked && <Flag tone="blocked">SHIPMENT BLOCKED</Flag>}
         {overdue && <Flag tone="risk">OVERDUE</Flag>}
       </div>
+      <p className="text-sm text-muted -mt-4 mb-6">{STAGE_NOTE[stageOf(o.status)]} <span className="text-xs">(detail: <StatusBadge status={o.status} />)</span></p>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: details */}

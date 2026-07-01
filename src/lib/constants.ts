@@ -142,3 +142,56 @@ export const MHW_SHOWROOM_ADDRESS =
 // Billing risk thresholds (hours an invoice can sit unpaid).
 export const INVOICE_MEDIUM_RISK_HOURS = 24;
 export const INVOICE_HIGH_RISK_HOURS = 48;
+
+// -----------------------------------------------------------------------------
+// Simplified 5-STAGE lifecycle (owner-defined) — the plain-language view of an
+// order, mapped from the detailed status underneath. This is what shows on the
+// dashboard, badges and lists.
+//   NEW ORDER          -> no deposit paid yet
+//   IN PROGRESS        -> deposit paid, in production
+//   PRODUCTION FINISHED-> ready to ship from supplier (balance invoice raised)
+//   IN TRANSIT         -> tracking added by supplier (ready-made -> Shopify,
+//                         made-to-order -> stored in portal)
+//   COMPLETE           -> done
+// -----------------------------------------------------------------------------
+export type Stage = 'new_order' | 'in_progress' | 'production_finished' | 'in_transit' | 'complete';
+
+export const STAGES: Stage[] = ['new_order', 'in_progress', 'production_finished', 'in_transit', 'complete'];
+
+export const STAGE_LABELS: Record<Stage, string> = {
+  new_order: 'NEW ORDER',
+  in_progress: 'IN PROGRESS',
+  production_finished: 'PRODUCTION FINISHED',
+  in_transit: 'IN TRANSIT',
+  complete: 'COMPLETE',
+};
+
+export const STAGE_NOTE: Record<Stage, string> = {
+  new_order: 'Order placed. Deposit not yet paid.',
+  in_progress: 'Deposit paid. In production with the supplier.',
+  production_finished: 'Made and ready to ship from the supplier. Balance invoice raised.',
+  in_transit: 'Shipped. Tracking added by the supplier.',
+  complete: 'Completed.',
+};
+
+export const STAGE_TONE: Record<Stage, BadgeTone> = {
+  new_order: 'new', in_progress: 'production', production_finished: 'ready', in_transit: 'qc', complete: 'done',
+};
+
+// Map a detailed status onto one of the 5 stages.
+export function stageOf(status: OrderStatus): Stage {
+  if (['completed', 'customer_notified'].includes(status)) return 'complete';
+  if (['shipped_to_showroom', 'tracking_uploaded', 'awaiting_dhl_tracking', 'dispatched_to_customer', 'arrived_at_showroom'].includes(status)) return 'in_transit';
+  if (['production_complete', 'balance_payment_required', 'balance_paid', 'qc_required', 'qc_passed', 'ready_to_dispatch'].includes(status)) return 'production_finished';
+  if (['payment_paid', 'in_production', 'production_update_due', 'supplier_notified'].includes(status)) return 'in_progress';
+  return 'new_order'; // new_*, awaiting_supplier_confirmation, payment_required, invoice_uploaded, review/delay
+}
+
+// Which detailed statuses fall under each stage (for list filtering).
+export const STAGE_STATUSES: Record<Stage, OrderStatus[]> = {
+  new_order: ['new_ready_made_order', 'new_made_to_order', 'awaiting_supplier_confirmation', 'payment_required', 'invoice_uploaded', 'manager_review_required', 'delayed_at_risk'],
+  in_progress: ['payment_paid', 'in_production', 'production_update_due', 'supplier_notified'],
+  production_finished: ['production_complete', 'balance_payment_required', 'balance_paid', 'qc_required', 'qc_passed', 'ready_to_dispatch'],
+  in_transit: ['shipped_to_showroom', 'tracking_uploaded', 'awaiting_dhl_tracking', 'dispatched_to_customer', 'arrived_at_showroom'],
+  complete: ['completed', 'customer_notified'],
+};

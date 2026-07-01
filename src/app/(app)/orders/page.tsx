@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { requireStaff } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader, EmptyState } from '@/components/ui';
-import { StatusBadge, OrderTypeBadge, RiskBadge } from '@/components/Badges';
+import { StageBadge, OrderTypeBadge, RiskBadge } from '@/components/Badges';
+import { STAGE_STATUSES, STAGE_LABELS, type Stage } from '@/lib/constants';
 import type { OrderWithRelations } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,7 @@ const BUCKET_STATUSES: Record<string, string[]> = {
   ready_dispatch: ['ready_to_dispatch'],
 };
 
-export default async function OrdersPage({ searchParams }: { searchParams: { bucket?: string; q?: string } }) {
+export default async function OrdersPage({ searchParams }: { searchParams: { bucket?: string; q?: string; stage?: string } }) {
   const profile = await requireStaff();
   const isAdmin = profile.role === 'admin'; // supplier name is admin-only
   const supabase = createClient();
@@ -28,8 +29,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
     .order('created_at', { ascending: false })
     .limit(200);
 
+  const stage = searchParams.stage as Stage | undefined;
   const bucket = searchParams.bucket;
-  if (bucket && BUCKET_STATUSES[bucket]) query = query.in('status', BUCKET_STATUSES[bucket]);
+  if (stage && STAGE_STATUSES[stage]) query = query.in('status', STAGE_STATUSES[stage]);
+  else if (bucket && BUCKET_STATUSES[bucket]) query = query.in('status', BUCKET_STATUSES[bucket]);
   else if (bucket === 'high_risk') query = query.eq('risk_level', 'high');
   else if (bucket === 'overdue') query = query.lt('expected_completion_date', new Date().toISOString());
 
@@ -49,7 +52,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
     <>
       <PageHeader
         title="Production Orders"
-        subtitle={q ? `Search "${q}" — ${orders.length} result(s)` : bucket ? `Filtered: ${bucket.replace('_', ' ')}` : `All orders (${orders.length})`}
+        subtitle={q ? `Search "${q}" — ${orders.length} result(s)` : stage ? `${STAGE_LABELS[stage]} — ${orders.length}` : bucket ? `Filtered: ${bucket.replace('_', ' ')}` : `All orders (${orders.length})`}
         action={
           <div className="flex items-center gap-2">
             <form method="get" className="flex items-center gap-2">
@@ -92,7 +95,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
                     {o.supplier_style_code && <div className="text-xs text-muted">{o.supplier_style_code}</div>}
                   </td>
                   {isAdmin && <td className="td">{o.supplier?.name ?? <span className="text-muted">Unassigned</span>}</td>}
-                  <td className="td"><StatusBadge status={o.status} /></td>
+                  <td className="td"><StageBadge status={o.status} /></td>
                   <td className="td"><RiskBadge level={o.risk_level} /></td>
                 </tr>
               ))}

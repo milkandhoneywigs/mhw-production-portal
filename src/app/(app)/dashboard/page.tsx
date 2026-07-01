@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import { requireStaff } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader, StatCard, Section } from '@/components/ui';
 import { computeDashboard } from '@/lib/dashboard';
+import { STAGES, STAGE_LABELS, STAGE_NOTE, stageOf } from '@/lib/constants';
 import type { Order, Invoice } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -10,24 +12,29 @@ export default async function DashboardPage() {
   await requireStaff();
   const supabase = createClient();
 
-  // Pull active (non-completed) orders + all non-final invoices for bucketing.
-  const [{ data: orders }, { data: invoices }] = await Promise.all([
-    supabase.from('orders').select('*').neq('status', 'completed').order('created_at', { ascending: false }),
+  const [{ data: allOrders }, { data: invoices }] = await Promise.all([
+    supabase.from('orders').select('*').order('created_at', { ascending: false }),
     supabase.from('invoices').select('*').in('status', ['uploaded', 'payment_required', 'disputed']),
   ]);
-
-  const c = computeDashboard((orders ?? []) as Order[], (invoices ?? []) as Invoice[]);
+  const orders = (allOrders ?? []) as Order[];
+  const active = orders.filter((o) => o.status !== 'completed');
+  const c = computeDashboard(active, (invoices ?? []) as Invoice[]);
+  const stageCount = (st: (typeof STAGES)[number]) => orders.filter((o) => stageOf(o.status) === st).length;
 
   return (
     <>
-      <PageHeader title="Production Dashboard" subtitle="Everything that needs attention today." />
+      <PageHeader title="Production Dashboard" subtitle="Order stages at a glance." />
 
-      <Section title="Needs action">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="New orders needing action" value={c.newOrders} href="/orders?bucket=new" tone={c.newOrders ? 'warn' : 'neutral'} />
-          <StatCard label="Ready made awaiting supplier dispatch" value={c.readyMadeAwaitingDispatch} href="/orders?bucket=rm_dispatch" />
-          <StatCard label="Made to order awaiting supplier confirmation" value={c.mtoAwaitingConfirmation} href="/orders?bucket=mto_confirm" />
-          <StatCard label="High-risk orders" value={c.highRisk} href="/orders?bucket=high_risk" tone={c.highRisk ? 'danger' : 'neutral'} />
+      {/* The 5-stage lifecycle — click a stage to see those orders. */}
+      <Section title="Order stages">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {STAGES.map((st) => (
+            <Link key={st} href={`/orders?stage=${st}`} className="card p-4 hover:shadow-md transition">
+              <div className="text-2xl font-semibold tabular-nums">{stageCount(st)}</div>
+              <div className="text-sm font-semibold mt-1">{STAGE_LABELS[st]}</div>
+              <div className="text-xs text-muted mt-0.5 leading-snug">{STAGE_NOTE[st]}</div>
+            </Link>
+          ))}
         </div>
       </Section>
 

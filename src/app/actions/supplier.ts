@@ -55,18 +55,31 @@ export async function supplierConfirmOrder(orderId: string) {
 export async function supplierMarkProductionComplete(orderId: string) {
   const profile = await requireProfile();
   const supabase = createClient();
-  const ord = await orderSupplierId(supabase, orderId);
+  const { data: ord } = await supabase.from('orders').select('supplier_id, supplier_price').eq('id', orderId).single();
+
+  // PRODUCTION FINISHED -> auto-raise the balance (remaining 50%) invoice for admin.
+  const balance = ord?.supplier_price ? Math.round((Number(ord.supplier_price) / 2) * 100) / 100 : null;
+  const newStatus = balance ? 'balance_payment_required' : 'production_complete';
+
   const { error } = await supabase.from('orders')
-    .update({ status: 'production_complete', production_complete_at: new Date().toISOString() })
+    .update({ status: newStatus, production_complete_at: new Date().toISOString() })
     .eq('id', orderId);
   if (error) return { error: error.message };
+
+  if (balance) {
+    await supabase.from('invoices').insert({
+      order_id: orderId, supplier_id: ord?.supplier_id, invoice_type: 'balance',
+      amount: balance, currency: 'AUD', status: 'payment_required',
+      uploaded_by: profile.id, invoice_number: `BAL-${orderId.slice(0, 8)}`,
+    });
+  }
   await supabase.from('supplier_updates').insert({
     order_id: orderId, supplier_id: ord?.supplier_id, update_type: 'production_complete',
-    message: 'Production marked complete by supplier.', created_by: profile.id,
+    message: balance ? `Production complete. Balance invoice ($${balance}) raised for payment.` : 'Production complete.',
+    created_by: profile.id,
   });
-  await logAudit({ actorId: profile.id, action: 'supplier.production_complete', entityType: 'order', entityId: orderId });
-  revalidatePath(`/orders/${orderId}`);
-  revalidatePath('/supplier');
+  await logAudit({ actorId: profile.id, action: 'supplier.production_complete', entityType: 'order', entityId: orderId, metadata: { balance } });
+  revalidatePath(`/orders/${orderId}`); revalidatePath('/supplier'); revalidatePath('/billing');
   return {};
 }
 
