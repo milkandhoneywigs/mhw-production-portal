@@ -1,5 +1,6 @@
 'use client';
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { setOrderStatus } from '@/app/actions/orders';
 import { READY_MADE_STATUSES, MADE_TO_ORDER_STATUSES, STATUS_LABELS, type OrderStatus, type OrderType } from '@/lib/constants';
 
@@ -7,6 +8,7 @@ import { READY_MADE_STATUSES, MADE_TO_ORDER_STATUSES, STATUS_LABELS, type OrderS
 export function StatusSelect({
   orderId, current, orderType,
 }: { orderId: string; current: OrderStatus; orderType: OrderType }) {
+  const router = useRouter();
   const options = orderType === 'ready_made' ? READY_MADE_STATUSES : MADE_TO_ORDER_STATUSES;
   const [value, setValue] = useState<OrderStatus>(current);
   const [pending, start] = useTransition();
@@ -17,6 +19,7 @@ export function StatusSelect({
     start(async () => {
       const res = await setOrderStatus(orderId, next);
       if (res?.error) setErr(res.error);
+      else router.refresh(); // refresh so the stage badge + note update immediately
     });
   }
 

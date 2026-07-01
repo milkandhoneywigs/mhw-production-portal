@@ -175,3 +175,13 @@ export interface OrderWithRelations extends Order {
   customer?: Customer | null;
   supplier?: Supplier | null;
 }
+
+export interface OrderMessage {
+  id: string;
+  order_id: string;
+  sender_id: string | null;
+  sender_name: string | null;
+  sender_role: Role | null;
+  body: string;
+  created_at: string;
+}

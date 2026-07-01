@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Section, EmptyState } from '@/components/ui';
 import { StageBadge, OrderTypeBadge } from '@/components/Badges';
 import { SupplierActions } from '@/components/supplier/SupplierActions';
+import { OrderMessages } from '@/components/order/OrderMessages';
+import type { OrderMessage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,11 +29,16 @@ const BUCKETS: { title: string; statuses: string[] }[] = [
 ];
 
 export default async function SupplierDashboard() {
-  await requireSupplier();
+  const profile = await requireSupplier();
   const supabase = createClient();
-  // RLS on the underlying orders table restricts this to the supplier's own orders.
-  const { data } = await supabase.from('v_supplier_orders').select('*').order('created_at', { ascending: false });
+  // RLS on the underlying orders table restricts these to the supplier's own orders.
+  const [{ data }, { data: allMsgs }] = await Promise.all([
+    supabase.from('v_supplier_orders').select('*').order('created_at', { ascending: false }),
+    supabase.from('order_messages').select('*').order('created_at'),
+  ]);
   const orders = (data ?? []) as SupplierOrder[];
+  const msgsByOrder: Record<string, OrderMessage[]> = {};
+  for (const m of (allMsgs ?? []) as OrderMessage[]) (msgsByOrder[m.order_id] ??= []).push(m);
 
   return (
     <>
@@ -67,6 +74,7 @@ export default async function SupplierDashboard() {
                       : 'Produce and ship to the Milk & Honey showroom once complete. Do not ship directly to customer.'}
                   </p>
                   <SupplierActions orderId={o.id} isReadyMade={o.order_type === 'ready_made'} />
+                  <OrderMessages orderId={o.id} messages={msgsByOrder[o.id] ?? []} meId={profile.id} compact />
                 </div>
               ))}
             </div>

@@ -6,8 +6,9 @@ import { InstructionButton } from '@/components/order/InstructionButton';
 import { StatusSelect } from '@/components/order/StatusSelect';
 import { DeleteOrderButton } from '@/components/order/DeleteOrderButton';
 import { calculateRiskLevel, isShipmentBlocked } from '@/lib/business/risk';
-import { SUPPLIER_INSTRUCTION_SHIPPING, STAGE_NOTE, stageOf } from '@/lib/constants';
-import type { Order, Customer, Supplier, Invoice, Tracking, SupplierUpdate } from '@/lib/types';
+import { OrderMessages } from '@/components/order/OrderMessages';
+import { SUPPLIER_INSTRUCTION_SHIPPING, STAGE_NOTE, STAGE_LABELS, STATUS_LABELS, stageOf } from '@/lib/constants';
+import type { Order, Customer, Supplier, Invoice, Tracking, SupplierUpdate, OrderMessage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
   if (!order) notFound();
   const o = order as Order;
 
-  const [{ data: customer }, { data: supplier }, { data: invoices }, { data: tracking }, { data: updates }, { data: history }] =
+  const [{ data: customer }, { data: supplier }, { data: invoices }, { data: tracking }, { data: updates }, { data: history }, { data: messages }] =
     await Promise.all([
       o.customer_id ? supabase.from('customers').select('*').eq('id', o.customer_id).single() : Promise.resolve({ data: null }),
       o.supplier_id ? supabase.from('suppliers').select('*').eq('id', o.supplier_id).single() : Promise.resolve({ data: null }),
@@ -37,6 +38,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       supabase.from('tracking').select('*').eq('order_id', o.id).order('created_at'),
       supabase.from('supplier_updates').select('*').eq('order_id', o.id).order('created_at', { ascending: false }),
       supabase.from('order_status_history').select('*').eq('order_id', o.id).order('created_at', { ascending: false }),
+      supabase.from('order_messages').select('*').eq('order_id', o.id).order('created_at'),
     ]);
 
   const cust = customer as Customer | null;
@@ -62,7 +64,10 @@ export default async function OrderDetailPage({ params }: { params: { id: string
         {blocked && <Flag tone="blocked">SHIPMENT BLOCKED</Flag>}
         {overdue && <Flag tone="risk">OVERDUE</Flag>}
       </div>
-      <p className="text-sm text-muted -mt-4 mb-6">{STAGE_NOTE[stageOf(o.status)]} <span className="text-xs">(detail: <StatusBadge status={o.status} />)</span></p>
+      <p className="text-sm -mt-4 mb-6">
+        <span className="font-semibold text-ink">Stage: {STAGE_LABELS[stageOf(o.status)]}</span>
+        <span className="text-muted"> — {STAGE_NOTE[stageOf(o.status)]} (current step: {STATUS_LABELS[o.status]})</span>
+      </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: details */}
@@ -146,6 +151,8 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               </ul>
             )}
           </div>
+
+          <OrderMessages orderId={o.id} messages={(messages ?? []) as OrderMessage[]} meId={profile.id} />
         </div>
 
         {/* Right: controls + timelines */}
