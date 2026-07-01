@@ -1,0 +1,72 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
+import { requireProfile, requireStaff } from '@/lib/auth';
+import { logAudit } from '@/lib/audit';
+import type { InvoiceType, PaymentMethod } from '@/lib/types';
+
+// Upload an invoice (staff OR supplier via RLS). An uploaded, unpaid invoice is
+// immediately 'payment_required'. Payments happen manually outside the portal;
+// this only records status.
+export async function uploadInvoice(
+  orderId: string,
+  data: { invoice_type: InvoiceType; invoice_number?: string; amount?: number; currency?: string; file_url?: string },
+) {
+  const profile = await requireProfile();
+  const supabase = createClient();
+  const { data: ord } = await supabase.from('orders').select('supplier_id').eq('id', orderId).single();
+
+  const { error } = await supabase.from('invoices').insert({
+    order_id: orderId, supplier_id: ord?.supplier_id ?? profile.supplier_id,
+    invoice_type: data.invoice_type, invoice_number: data.invoice_number ?? null,
+    amount: data.amount ?? null, currency: data.currency ?? 'AUD',
+    file_url: data.file_url ?? null, uploaded_by: profile.id,
+    status: 'payment_required',
+  });
+  if (error) return { error: error.message };
+
+  // Reflect the payment gate on the order status.
+  const orderStatus = data.invoice_type === 'balance' ? 'balance_payment_required' : 'payment_required';
+  await supabase.from('orders').update({ status: orderStatus }).eq('id', orderId);
+  await supabase.from('supplier_updates').insert({
+    order_id: orderId, supplier_id: ord?.supplier_id, update_type: 'invoice_uploaded',
+    message: `Invoice uploaded (${data.invoice_type}).`, created_by: profile.id,
+  });
+  await logAudit({ actorId: profile.id, action: 'invoice.upload', entityType: 'order', entityId: orderId, metadata: { invoice_type: data.invoice_type } });
+  revalidatePath(`/orders/${orderId}`);
+  revalidatePath('/billing');
+  return {};
+}
+
+// Mark an invoice paid — STAFF/ADMIN ONLY (suppliers can never mark paid).
+// Records the manual payment reference; the actual transfer happened outside.
+export async function markInvoicePaid(
+  invoiceId: string,
+  data: { payment_method: PaymentMethod; payment_reference?: string },
+) {
+  const profile = await requireStaff();
+  const supabase = createClient();
+
+  const { data: inv, error: readErr } = await supabase
+    .from('invoices').select('order_id, invoice_type').eq('id', invoiceId).single();
+  if (readErr || !inv) return { error: 'Invoice not found.' };
+
+  const { error } = await supabase.from('invoices').update({
+    status: 'paid', payment_method: data.payment_method,
+    payment_reference: data.payment_reference ?? null, paid_at: new Date().toISOString(),
+  }).eq('id', invoiceId);
+  if (error) return { error: error.message };
+
+  // Advance the order past the payment gate.
+  const nextStatus = inv.invoice_type === 'balance' ? 'balance_paid' : 'payment_paid';
+  await supabase.from('orders').update({ status: nextStatus }).eq('id', inv.order_id);
+
+  await logAudit({
+    actorId: profile.id, action: 'invoice.mark_paid', entityType: 'invoice', entityId: invoiceId,
+    metadata: { method: data.payment_method, reference: data.payment_reference },
+  });
+  revalidatePath('/billing');
+  revalidatePath(`/orders/${inv.order_id}`);
+  return {};
+}

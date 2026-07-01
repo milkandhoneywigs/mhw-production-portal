@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-cream text-ink antialiased;
+}
+
+/* Reusable component classes for the operational, luxury aesthetic. */
+@layer components {
+  .card {
+    @apply bg-white rounded-xl ring-1 ring-beige shadow-card;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition;
+  }
+  .btn-primary {
+    @apply btn bg-ink text-cream hover:bg-ink/90;
+  }
+  .btn-secondary {
+    @apply btn bg-sand text-ink ring-1 ring-beige hover:bg-beige;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+  .label {
+    @apply block text-xs font-medium uppercase tracking-wide text-muted mb-1;
+  }
+  .input {
+    @apply w-full rounded-lg border border-beige bg-white px-3 py-2 text-sm text-ink
+           focus:outline-none focus:ring-2 focus:ring-honey/40;
+  }
+  .chip {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1;
+  }
+  .th {
+    @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted;
+  }
+  .td {
+    @apply px-3 py-2.5 text-sm text-ink align-top;
+  }
+}
