@@ -19,23 +19,32 @@ export default async function DashboardPage() {
   const orders = (allOrders ?? []) as Order[];
   const active = orders.filter((o) => o.status !== 'completed');
   const c = computeDashboard(active, (invoices ?? []) as Invoice[]);
-  const stageCount = (st: (typeof STAGES)[number]) => orders.filter((o) => stageOf(o.status) === st).length;
+  const isOnline = (o: Order) => o.source === 'shopify' || o.source === 'fresha';
+  const stageCount = (st: (typeof STAGES)[number], ch?: 'online' | 'instore') =>
+    orders.filter((o) => stageOf(o.status) === st && (ch === undefined || (ch === 'online') === isOnline(o))).length;
+
+  const StageRow = ({ channel }: { channel: 'online' | 'instore' }) => (
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      {STAGES.map((st) => (
+        <Link key={st} href={`/orders?stage=${st}&channel=${channel}`} className="card p-4 hover:shadow-md transition">
+          <div className="text-2xl font-semibold tabular-nums">{stageCount(st, channel)}</div>
+          <div className="text-sm font-semibold mt-1">{STAGE_LABELS[st]}</div>
+          <div className="text-xs text-muted mt-0.5 leading-snug">{STAGE_NOTE[st]}</div>
+        </Link>
+      ))}
+    </div>
+  );
 
   return (
     <>
       <PageHeader title="Production Dashboard" subtitle="Order stages at a glance." />
 
-      {/* The 5-stage lifecycle — click a stage to see those orders. */}
-      <Section title="Order stages">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {STAGES.map((st) => (
-            <Link key={st} href={`/orders?stage=${st}`} className="card p-4 hover:shadow-md transition">
-              <div className="text-2xl font-semibold tabular-nums">{stageCount(st)}</div>
-              <div className="text-sm font-semibold mt-1">{STAGE_LABELS[st]}</div>
-              <div className="text-xs text-muted mt-0.5 leading-snug">{STAGE_NOTE[st]}</div>
-            </Link>
-          ))}
-        </div>
+      {/* 5-stage lifecycle, split by channel. Click a stage to see those orders. */}
+      <Section title="Online orders (Shopify)">
+        <StageRow channel="online" />
+      </Section>
+      <Section title="In-store orders">
+        <StageRow channel="instore" />
       </Section>
 
       <Section title="Payments">

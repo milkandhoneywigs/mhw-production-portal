@@ -18,7 +18,7 @@ const BUCKET_STATUSES: Record<string, string[]> = {
   ready_dispatch: ['ready_to_dispatch'],
 };
 
-export default async function OrdersPage({ searchParams }: { searchParams: { bucket?: string; q?: string; stage?: string } }) {
+export default async function OrdersPage({ searchParams }: { searchParams: { bucket?: string; q?: string; stage?: string; channel?: string } }) {
   const profile = await requireStaff();
   const isAdmin = profile.role === 'admin'; // supplier name is admin-only
   const supabase = createClient();
@@ -31,6 +31,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
 
   const stage = searchParams.stage as Stage | undefined;
   const bucket = searchParams.bucket;
+  const channel = searchParams.channel;
+  if (channel === 'online') query = query.in('source', ['shopify', 'fresha']);
+  else if (channel === 'instore') query = query.in('source', ['manual', 'custom', 'other']);
   if (stage && STAGE_STATUSES[stage]) query = query.in('status', STAGE_STATUSES[stage]);
   else if (bucket && BUCKET_STATUSES[bucket]) query = query.in('status', BUCKET_STATUSES[bucket]);
   else if (bucket === 'high_risk') query = query.eq('risk_level', 'high');
@@ -52,7 +55,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
     <>
       <PageHeader
         title="Production Orders"
-        subtitle={q ? `Search "${q}" — ${orders.length} result(s)` : stage ? `${STAGE_LABELS[stage]} — ${orders.length}` : bucket ? `Filtered: ${bucket.replace('_', ' ')}` : `All orders (${orders.length})`}
+        subtitle={q ? `Search "${q}" — ${orders.length} result(s)`
+          : stage ? `${channel === 'online' ? 'Online · ' : channel === 'instore' ? 'In-store · ' : ''}${STAGE_LABELS[stage]} — ${orders.length}`
+          : channel ? `${channel === 'online' ? 'Online' : 'In-store'} orders (${orders.length})`
+          : bucket ? `Filtered: ${bucket.replace('_', ' ')}` : `All orders (${orders.length})`}
         action={
           <div className="flex items-center gap-2">
             <form method="get" className="flex items-center gap-2">
