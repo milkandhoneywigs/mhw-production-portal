@@ -84,7 +84,8 @@ export async function createManualOrder(formData: FormData): Promise<{ error?: s
     .from('orders')
     .insert({
       order_number: orderNumber,
-      source: 'manual',
+      // Channel picked on the form: online = website/Shopify bucket, in-store = manual bucket.
+      source: s(formData, 'channel') === 'online' ? 'shopify' : 'manual',
       customer_id: customer.id,
       supplier_id: supplierId,
       order_type: orderType,

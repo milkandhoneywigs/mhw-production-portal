@@ -30,6 +30,16 @@ export function NewOrderForm({ mappings, suppliers, isAdmin }: { mappings: Produ
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {/* Sales channel */}
+      <div className="card p-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Sales channel</h2>
+        <select name="channel" className="input md:w-64" defaultValue="online">
+          <option value="online">ONLINE (website / Shopify)</option>
+          <option value="instore">IN-STORE (walk-in / custom)</option>
+        </select>
+        <p className="text-xs text-muted mt-2">Determines whether the order appears under Online or In-store on the dashboard.</p>
+      </div>
+
       {/* Order type */}
       <div className="card p-5">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Order type</h2>
