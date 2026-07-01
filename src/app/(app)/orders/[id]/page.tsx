@@ -8,7 +8,7 @@ import { DeleteOrderButton } from '@/components/order/DeleteOrderButton';
 import { calculateRiskLevel, isShipmentBlocked } from '@/lib/business/risk';
 import { OrderMessages } from '@/components/order/OrderMessages';
 import { SUPPLIER_INSTRUCTION_SHIPPING, STAGE_NOTE, STAGE_LABELS, STATUS_LABELS, stageOf } from '@/lib/constants';
-import { parseRestock, showroomLabel, totalUnits } from '@/lib/business/restock';
+import { showroomFromShipping, totalUnits, type RestockItem } from '@/lib/business/restock';
 import type { Order, Customer, Supplier, Invoice, Tracking, SupplierUpdate, OrderMessage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -54,8 +54,13 @@ export default async function OrderDetailPage({ params }: { params: { id: string
     ? <span className={overdue ? 'text-red-600 font-medium' : ''}>{eta}{overdue ? ' — OVERDUE (past ETA)' : ''}</span>
     : <span className="text-muted">not set</span>;
 
-  // Store restock orders carry their line-item sheet in production_notes.
-  const restock = o.order_type === 'stock' ? parseRestock(o.production_notes) : null;
+  // Store restock orders carry their line-item sheet in the restock_items table.
+  let restockItems: RestockItem[] = [];
+  if (o.order_type === 'stock') {
+    const { data: ri } = await supabase.from('restock_items').select('*').eq('order_id', o.id).order('position');
+    restockItems = (ri ?? []) as RestockItem[];
+  }
+  const isRestock = o.order_type === 'stock';
 
   return (
     <>
@@ -76,12 +81,12 @@ export default async function OrderDetailPage({ params }: { params: { id: string
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: details */}
         <div className="lg:col-span-2 space-y-6">
-          {restock ? (
+          {isRestock ? (
             <div className="card p-5">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Store restock sheet</h2>
               <dl>
-                <Row label="Destination" value={showroomLabel(restock.destination)} />
-                <Row label="Total" value={`${restock.items.length} styles · ${totalUnits(restock.items)} units`} />
+                <Row label="Destination" value={showroomFromShipping(o.shipping_destination)} />
+                <Row label="Total" value={`${restockItems.length} styles · ${totalUnits(restockItems)} units`} />
                 <Row label="Estimated completion (ETA)" value={etaDisplay} />
               </dl>
               <table className="w-full mt-3 text-sm">
@@ -89,7 +94,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
                   <th className="th">Style</th><th className="th">SKU</th><th className="th">Length</th><th className="th">Cap size</th><th className="th">Qty</th>
                 </tr></thead>
                 <tbody className="divide-y divide-beige">
-                  {restock.items.map((it, idx) => (
+                  {restockItems.map((it, idx) => (
                     <tr key={idx}>
                       <td className="td font-medium">{it.style_name}</td>
                       <td className="td">{it.supplier_style_code ?? '-'}</td>

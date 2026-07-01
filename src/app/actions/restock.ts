@@ -5,10 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 import { etaFor } from '@/lib/business/eta';
-import {
-  SHOWROOMS, serializeRestock, showroomLabel, totalUnits,
-  type RestockItem, type RestockData,
-} from '@/lib/business/restock';
+import { SHOWROOMS, totalUnits, type RestockItem } from '@/lib/business/restock';
 import type { OrderStatus } from '@/lib/constants';
 
 function generateRestockNumber(): string {
@@ -58,8 +55,6 @@ export async function createRestockOrder(formData: FormData): Promise<{ error?: 
 
   if (items.length === 0) return { error: 'Add at least one line item.' };
 
-  const restock: RestockData = { restock: true, destination: showroom.value as RestockData['destination'], items };
-
   // Assign the sole active supplier (CBW).
   let supplierId: string | null = null;
   const { data: sole } = await supabase.from('suppliers').select('id').eq('active', true);
@@ -81,8 +76,8 @@ export async function createRestockOrder(formData: FormData): Promise<{ error?: 
       customer_facing_product_name: `Store restock — ${showroom.label} (${items.length} styles / ${units} units)`,
       internal_style_name: `STORE RESTOCK — ${showroom.label}`,
       shipping_destination: showroom.shippingDestination,
-      // Line-item sheet lives here (supplier-visible). Identified by order_type 'stock'.
-      production_notes: serializeRestock(restock),
+      // Readable summary; the line items live in restock_items (identified by order_type 'stock').
+      production_notes: `Store restock — ${showroom.label} · ${items.length} styles · ${units} units`,
       // Restocks ship to a showroom -> in-store 20 business day lead time.
       expected_completion_date: etaFor('instore'),
     })
@@ -90,9 +85,22 @@ export async function createRestockOrder(formData: FormData): Promise<{ error?: 
     .single();
   if (error || !order) return { error: `Could not create restock order: ${error?.message}` };
 
+  const { error: itemsErr } = await supabase.from('restock_items').insert(
+    items.map((it, i) => ({
+      order_id: order.id,
+      style_name: it.style_name,
+      supplier_style_code: it.supplier_style_code,
+      length: it.length,
+      cap_size: it.cap_size,
+      quantity: it.quantity,
+      position: i,
+    })),
+  );
+  if (itemsErr) return { error: `Could not save restock items: ${itemsErr.message}` };
+
   await logAudit({
     actorId: profile.id, action: 'restock.create', entityType: 'order', entityId: order.id,
-    metadata: { order_number: orderNumber, destination: showroomLabel(restock.destination), styles: items.length, units },
+    metadata: { order_number: orderNumber, destination: showroom.label, styles: items.length, units },
   });
 
   redirect(`/orders/${order.id}`);

@@ -4,7 +4,7 @@ import { PageHeader, Section, EmptyState } from '@/components/ui';
 import { StageBadge, OrderTypeBadge } from '@/components/Badges';
 import { SupplierActions } from '@/components/supplier/SupplierActions';
 import { OrderMessages } from '@/components/order/OrderMessages';
-import { parseRestock, showroomLabel, totalUnits } from '@/lib/business/restock';
+import { showroomFromShipping, totalUnits, type RestockItem } from '@/lib/business/restock';
 import type { OrderMessage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +17,7 @@ interface SupplierOrder {
   customer_ordered_length: string | null; supplier_order_length: string | null;
   cap_size: string | null; density: string | null; colour_notes: string | null;
   production_notes: string | null; expected_completion_date: string | null;
+  shipping_destination: string | null;
 }
 
 const BUCKETS: { title: string; statuses: string[] }[] = [
@@ -41,6 +42,14 @@ export default async function SupplierDashboard() {
   const msgsByOrder: Record<string, OrderMessage[]> = {};
   for (const m of (allMsgs ?? []) as OrderMessage[]) (msgsByOrder[m.order_id] ??= []).push(m);
 
+  // Restock line items for any 'stock' orders (RLS scopes to this supplier).
+  const stockIds = orders.filter((o) => o.order_type === 'stock').map((o) => o.id);
+  const restockByOrder: Record<string, RestockItem[]> = {};
+  if (stockIds.length) {
+    const { data: ri } = await supabase.from('restock_items').select('*').in('order_id', stockIds).order('position');
+    for (const it of (ri ?? []) as RestockItem[]) (restockByOrder[it.order_id!] ??= []).push(it);
+  }
+
   return (
     <>
       <PageHeader title="My Orders" subtitle="Orders assigned to you. You only see your own orders." />
@@ -53,27 +62,27 @@ export default async function SupplierDashboard() {
           <Section key={bucket.title} title={`${bucket.title} (${items.length})`}>
             <div className="grid md:grid-cols-2 gap-3">
               {items.map((o) => {
-                const restock = o.order_type === 'stock' ? parseRestock(o.production_notes) : null;
+                const restockItems = o.order_type === 'stock' ? (restockByOrder[o.id] ?? []) : null;
                 return (
                 <div key={o.id} className="card p-4">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="font-medium">{o.order_number}</span>
                     <div className="flex gap-2"><OrderTypeBadge type={o.order_type} /><StageBadge status={o.status} /></div>
                   </div>
-                  {restock ? (
+                  {restockItems ? (
                     <div>
-                      <p className="text-sm font-medium mb-1">Store restock — {showroomLabel(restock.destination)} <span className="text-muted font-normal">({restock.items.length} styles · {totalUnits(restock.items)} units)</span></p>
+                      <p className="text-sm font-medium mb-1">Store restock — {showroomFromShipping(o.shipping_destination)} <span className="text-muted font-normal">({restockItems.length} styles · {totalUnits(restockItems)} units)</span></p>
                       <table className="w-full text-xs mt-1">
                         <thead className="text-muted"><tr className="text-left"><th className="py-0.5">Style</th><th>SKU</th><th>Length</th><th>Cap</th><th>Qty</th></tr></thead>
                         <tbody>
-                          {restock.items.map((it, idx) => (
+                          {restockItems.map((it, idx) => (
                             <tr key={idx} className="border-t border-beige/60">
                               <td className="py-0.5 font-medium">{it.style_name}</td><td>{it.supplier_style_code ?? '-'}</td><td>{it.length ?? '-'}</td><td>{it.cap_size ?? '-'}</td><td className="tabular-nums">{it.quantity}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
-                      <p className="text-xs mt-2 font-medium text-ink">Produce and ship this restock to the {showroomLabel(restock.destination)}. Add pricing below to send it back for payment.</p>
+                      <p className="text-xs mt-2 font-medium text-ink">Produce and ship this restock to the {showroomFromShipping(o.shipping_destination)}. Add pricing below to send it back for payment.</p>
                     </div>
                   ) : (<>
                   <dl className="text-sm grid grid-cols-2 gap-x-3 gap-y-0.5">
