@@ -107,6 +107,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ skipped: 'no wig line item', order_number: orderNumber });
   }
 
+  // Every order in this workflow goes to CBW (the only supplier). Look it up so
+  // we never hardcode an id; if exactly one active supplier exists, assign it.
+  const { data: suppliers } = await supabase.from('suppliers').select('id').eq('active', true);
+  const supplierId = suppliers && suppliers.length === 1 ? suppliers[0].id : null;
+
   // --- gather line-item properties (Shopify stores custom fields here) ---
   const props: { name: string; value: string }[] = Array.isArray(matchedItem?.properties)
     ? matchedItem.properties.map((p: any) => ({ name: (p?.name ?? '').toString(), value: (p?.value ?? '').toString() }))
@@ -181,6 +186,7 @@ export async function POST(req: NextRequest) {
       order_number: orderNumber,
       source: 'shopify',
       customer_id: customer.id,
+      supplier_id: supplierId,
       order_type: orderType,
       status,
       risk_level: isCustomColour ? 'high' : 'low',

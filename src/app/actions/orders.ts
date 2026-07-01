@@ -31,7 +31,13 @@ export async function createManualOrder(formData: FormData): Promise<{ error?: s
   const requestedType = (s(formData, 'order_type') as 'ready_made' | 'made_to_order') || 'made_to_order';
   const styleName = s(formData, 'internal_style_name');
   const orderedLength = s(formData, 'customer_ordered_length');
-  const supplierId = s(formData, 'supplier_id');
+  let supplierId = s(formData, 'supplier_id');
+  // Every order goes to CBW (the only supplier). If none was chosen (e.g. staff,
+  // who don't see the picker), default to the sole active supplier.
+  if (!supplierId) {
+    const { data: sole } = await supabase.from('suppliers').select('id').eq('active', true);
+    if (sole && sole.length === 1) supplierId = sole[0].id;
+  }
 
   if (!s(formData, 'customer_full_name')) return { error: 'Customer name is required.' };
   if (!styleName) return { error: 'Please select a style.' };

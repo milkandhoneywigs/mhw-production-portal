@@ -115,8 +115,8 @@ export function NewOrderForm({ mappings, suppliers, isAdmin }: { mappings: Produ
         {isAdmin && (
           <div>
             <label className="label">Assign supplier</label>
-            <select name="supplier_id" className="input">
-              <option value="">Unassigned</option>
+            <select name="supplier_id" className="input" defaultValue={suppliers.length === 1 ? suppliers[0].id : ''}>
+              {suppliers.length !== 1 && <option value="">Unassigned</option>}
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
