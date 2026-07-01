@@ -6,7 +6,8 @@
 // classifier can later refine order_type, but the deterministic rules below run
 // first and always produce a safe default.
 // -----------------------------------------------------------------------------
-import type { OrderType, OrderStatus, ShippingDestination } from '../constants';
+import type { OrderType, OrderStatus } from '../constants';
+import type { ShippingDestination } from '../types';
 import { calculateSupplierLength } from './length';
 
 export interface ClassifyInput {

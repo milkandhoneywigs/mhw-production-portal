@@ -12,13 +12,20 @@ export default async function ProductMappingsPage() {
   const { data } = await supabase.from('product_mappings').select('*').order('style_name');
   const mappings = (data ?? []) as ProductMapping[];
 
+  // Void wrapper so the <form action> type is satisfied (the action itself
+  // returns an error object for programmatic callers).
+  async function saveMapping(formData: FormData) {
+    'use server';
+    await upsertProductMapping(formData);
+  }
+
   return (
     <>
       <PageHeader title="Product Mapping" subtitle="Style name to supplier style code. Used to auto-fill orders." />
 
       <Section title="Add / update mapping">
         {/* Server action form: upsert by style_name. */}
-        <form action={upsertProductMapping} className="card p-4 grid md:grid-cols-4 gap-3 items-end">
+        <form action={saveMapping} className="card p-4 grid md:grid-cols-4 gap-3 items-end">
           <div><label className="label">Style name</label><input name="style_name" className="input" placeholder="e.g. ANEESHA" required /></div>
           <div><label className="label">Supplier code</label><input name="supplier_style_code" className="input" placeholder="e.g. N95" required /></div>
           <div><label className="label">Default density</label><input name="default_density" className="input" /></div>
