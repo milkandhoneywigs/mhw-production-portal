@@ -22,6 +22,7 @@ const MODULES: { label: string; href?: string; tag?: string }[] = [
   { label: 'Customer Service', href: '/command-centre/agents/claudia-customer-service', tag: 'CLAUDIA' },
   { label: 'SEO', href: '/command-centre/agents/seo-agent', tag: 'LIVE' },
   { label: 'Marketing', href: '/command-centre/agents/marketing-agent', tag: 'LIVE' },
+  { label: 'Design', href: '/command-centre/agents/graphic-design-agent', tag: 'LIVE' },
   { label: 'Inventory', href: '/command-centre/agents/inventory-agent', tag: 'PLANNED' },
   { label: 'Finance', href: '/command-centre/agents/finance-agent', tag: 'PLANNED' },
   { label: 'Partnerships', href: '/command-centre/agents/partnerships-agent', tag: 'PLANNED' },
