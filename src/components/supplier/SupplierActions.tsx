@@ -7,7 +7,9 @@ import { uploadInvoice } from '@/app/actions/invoices';
 
 // Compact supplier action panel per order. Suppliers can confirm, add updates,
 // mark complete, upload tracking + invoices — and nothing else. RLS backs this up.
-export function SupplierActions({ orderId, isReadyMade }: { orderId: string; isReadyMade: boolean }) {
+export function SupplierActions({ orderId, isReadyMade, isDirectToCustomer = false }: { orderId: string; isReadyMade: boolean; isDirectToCustomer?: boolean }) {
+  // Ships direct to the customer when ready-made OR an international made-to-order.
+  const shipsToCustomer = isReadyMade || isDirectToCustomer;
   const [pending, start] = useTransition();
   const [open, setOpen] = useState<null | 'update' | 'tracking' | 'invoice' | 'price'>(null);
   const [msg, setMsg] = useState('');
@@ -49,7 +51,7 @@ export function SupplierActions({ orderId, isReadyMade }: { orderId: string; isR
           run(() => supplierUploadTracking(orderId, {
             carrier: fd.get('carrier')!.toString(), tracking_number: fd.get('tracking_number')!.toString(),
             tracking_url: fd.get('tracking_url')?.toString() || undefined,
-            tracking_type: isReadyMade ? 'supplier_to_customer' : 'supplier_to_showroom',
+            tracking_type: shipsToCustomer ? 'supplier_to_customer' : 'supplier_to_showroom',
           }));
         }}>
           <input name="carrier" className="input text-sm" placeholder="Carrier (e.g. DHL)" required />

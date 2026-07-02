@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/service';
-import { classifyOrder } from '@/lib/business/classify';
+import { classifyOrder, isInternationalCountry } from '@/lib/business/classify';
 import { calculateSupplierLength } from '@/lib/business/length';
 import { etaFor } from '@/lib/business/eta';
 import type { OrderStatus } from '@/lib/constants';
@@ -123,9 +123,14 @@ export async function POST(req: NextRequest) {
     ? `${orderedLength ?? ''} bob`.trim()
     : orderedLength;
 
+  // International customers: made-to-order ships direct supplier -> customer.
+  const shipCountry = clean(payload?.shipping_address?.country)
+    ?? clean(payload?.customer?.default_address?.country);
+  const isInternational = isInternationalCountry(shipCountry);
+
   // --- classify (order_type, status, shipping destination, -2" length) ---
   // Default to made-to-order; staff can flip to ready-made on review.
-  const classification = classifyOrder({ requestedType: 'made_to_order', customerOrderedLength: lengthForCalc });
+  const classification = classifyOrder({ requestedType: 'made_to_order', customerOrderedLength: lengthForCalc, isInternational });
   const supplierLength = calculateSupplierLength(lengthForCalc).supplierLength;
 
   // CUSTOM COLOUR must be confirmed with the supplier before payment/production.

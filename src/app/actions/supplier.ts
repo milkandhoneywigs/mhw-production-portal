@@ -11,7 +11,7 @@ import type { SupplierUpdateType, TrackingType } from '@/lib/types';
 // Staff/admin can also call these (RLS allows staff full access).
 
 async function orderSupplierId(supabase: ReturnType<typeof createClient>, orderId: string) {
-  const { data } = await supabase.from('orders').select('supplier_id, order_type').eq('id', orderId).single();
+  const { data } = await supabase.from('orders').select('supplier_id, order_type, shipping_destination').eq('id', orderId).single();
   return data;
 }
 
@@ -97,8 +97,10 @@ export async function supplierUploadTracking(
   });
   if (error) return { error: error.message };
 
-  // Ready made: tracking uploaded advances the ready-made flow.
-  if (ord?.order_type === 'ready_made') {
+  // Ships direct to customer when ready-made OR an international made-to-order
+  // (shipping_destination = customer_direct). Otherwise it heads to the showroom.
+  const shipsToCustomer = ord?.order_type === 'ready_made' || ord?.shipping_destination === 'customer_direct';
+  if (shipsToCustomer) {
     await supabase.from('orders').update({ status: 'tracking_uploaded' }).eq('id', orderId);
   } else {
     await supabase.from('orders').update({ status: 'shipped_to_showroom', shipped_to_showroom_at: new Date().toISOString() }).eq('id', orderId);

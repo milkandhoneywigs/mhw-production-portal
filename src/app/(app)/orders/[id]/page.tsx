@@ -7,7 +7,7 @@ import { StatusSelect } from '@/components/order/StatusSelect';
 import { DeleteOrderButton } from '@/components/order/DeleteOrderButton';
 import { calculateRiskLevel, isShipmentBlocked } from '@/lib/business/risk';
 import { OrderMessages } from '@/components/order/OrderMessages';
-import { SUPPLIER_INSTRUCTION_SHIPPING, STAGE_NOTE, STAGE_LABELS, STATUS_LABELS, stageOf } from '@/lib/constants';
+import { supplierShippingInstruction, STAGE_NOTE, STAGE_LABELS, STATUS_LABELS, stageOf } from '@/lib/constants';
 import { showroomFromShipping, totalUnits, type RestockItem } from '@/lib/business/restock';
 import type { Order, Customer, Supplier, Invoice, Tracking, SupplierUpdate, OrderMessage } from '@/lib/types';
 
@@ -122,9 +122,7 @@ export default async function OrderDetailPage({ params }: { params: { id: string
               <Row label="Production notes" value={o.production_notes} />
               <Row label="Estimated completion (ETA)" value={etaDisplay} />
               <Row label="Shipping destination" value={o.shipping_destination.replace('_', ' ')} />
-              <Row label="Supplier instruction" value={
-                o.order_type === 'ready_made' ? SUPPLIER_INSTRUCTION_SHIPPING.ready_made
-                : o.order_type === 'made_to_order' ? SUPPLIER_INSTRUCTION_SHIPPING.made_to_order : '-'} />
+              <Row label="Supplier instruction" value={supplierShippingInstruction(o.order_type, o.shipping_destination)} />
             </dl>
           </div>
           )}

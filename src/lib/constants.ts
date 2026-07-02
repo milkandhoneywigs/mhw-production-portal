@@ -133,7 +133,17 @@ export const SUPPLIER_INSTRUCTION_SHIPPING = {
     'Ship directly to customer via DHL. Do not ship to Milk & Honey showroom.',
   made_to_order:
     'Produce this order and ship to Milk & Honey showroom once complete. Do not ship directly to customer.',
+  made_to_order_international:
+    'Produce this order and ship DIRECT to the customer via DHL once complete (international order). Do not ship to Milk & Honey showroom.',
 } as const;
+
+// The shipping instruction depends on the destination, not just the order type:
+// international made-to-order ships direct supplier -> customer.
+export function supplierShippingInstruction(orderType: string, shippingDestination: string): string {
+  if (orderType === 'ready_made') return SUPPLIER_INSTRUCTION_SHIPPING.ready_made;
+  if (shippingDestination === 'customer_direct') return SUPPLIER_INSTRUCTION_SHIPPING.made_to_order_international;
+  return SUPPLIER_INSTRUCTION_SHIPPING.made_to_order;
+}
 
 // Milk & Honey showroom destination (used on made-to-order supplier instructions).
 export const MHW_SHOWROOM_ADDRESS =

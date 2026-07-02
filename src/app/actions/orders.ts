@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, requireProfile } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
-import { classifyOrder } from '@/lib/business/classify';
+import { classifyOrder, isInternationalCountry } from '@/lib/business/classify';
 import { calculateSupplierLength } from '@/lib/business/length';
 import { etaFor } from '@/lib/business/eta';
 import type { OrderStatus } from '@/lib/constants';
@@ -58,8 +58,11 @@ export async function createManualOrder(formData: FormData): Promise<{ error?: s
     ? `${orderedLength ?? ''} bob`.trim()
     : orderedLength;
 
+  // International customers: made-to-order ships direct supplier -> customer.
+  const isInternational = isInternationalCountry(s(formData, 'country'));
+
   // Classification + length. A manual override wins; otherwise apply the -2" rule.
-  const classification = classifyOrder({ requestedType, customerOrderedLength: lengthForCalc });
+  const classification = classifyOrder({ requestedType, customerOrderedLength: lengthForCalc, isInternational });
   const overrideLen = s(formData, 'supplier_order_length');
   const lenResult = calculateSupplierLength(lengthForCalc);
   const supplierLength = overrideLen ?? lenResult.supplierLength;

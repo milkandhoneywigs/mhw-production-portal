@@ -5,6 +5,7 @@ import { StageBadge, OrderTypeBadge } from '@/components/Badges';
 import { SupplierActions } from '@/components/supplier/SupplierActions';
 import { OrderMessages } from '@/components/order/OrderMessages';
 import { showroomFromShipping, totalUnits, type RestockItem } from '@/lib/business/restock';
+import { supplierShippingInstruction } from '@/lib/constants';
 import type { OrderMessage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -95,14 +96,12 @@ export default async function SupplierDashboard() {
                   </dl>
                   {o.colour_notes && <p className="text-xs mt-1"><span className="text-muted">Colour:</span> {o.colour_notes}</p>}
                   {o.production_notes && <p className="text-xs mt-1"><span className="text-muted">Notes:</span> {o.production_notes}</p>}
-                  {/* Shipping reminder per order type */}
+                  {/* Shipping reminder — destination-aware (international MTO ships direct) */}
                   <p className="text-xs mt-2 font-medium text-ink">
-                    {o.order_type === 'ready_made'
-                      ? 'Ship directly to customer via DHL. Do not ship to Milk & Honey showroom.'
-                      : 'Produce and ship to the Milk & Honey showroom once complete. Do not ship directly to customer.'}
+                    {supplierShippingInstruction(o.order_type, o.shipping_destination ?? '')}
                   </p>
                   </>)}
-                  <SupplierActions orderId={o.id} isReadyMade={o.order_type === 'ready_made'} />
+                  <SupplierActions orderId={o.id} isReadyMade={o.order_type === 'ready_made'} isDirectToCustomer={(restockItems ? false : o.shipping_destination === 'customer_direct')} />
                   <OrderMessages orderId={o.id} messages={msgsByOrder[o.id] ?? []} meId={profile.id} compact />
                 </div>
                 );

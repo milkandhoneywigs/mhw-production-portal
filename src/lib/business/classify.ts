@@ -13,6 +13,17 @@ import { calculateSupplierLength } from './length';
 export interface ClassifyInput {
   requestedType: 'ready_made' | 'made_to_order';
   customerOrderedLength?: string | null;
+  // International customers: made-to-order ships DIRECT supplier -> customer
+  // (not via the Milk & Honey showroom). AU made-to-order still routes through
+  // the showroom. Unknown country defaults to domestic (showroom).
+  isInternational?: boolean;
+}
+
+// A customer is international when a country is set and it isn't Australia.
+export function isInternationalCountry(country: string | null | undefined): boolean {
+  const c = (country || '').trim().toLowerCase();
+  if (!c) return false; // unknown -> treat as domestic (safe default: via showroom)
+  return !['australia', 'au', 'aus'].includes(c);
 }
 
 export interface ClassifyResult {
@@ -34,13 +45,16 @@ export function classifyOrder(input: ClassifyInput): ClassifyResult {
     };
   }
 
+  // International made-to-order ships direct supplier -> customer; AU via showroom.
+  const madeToOrderDest: ShippingDestination = input.isInternational ? 'customer_direct' : 'mhw_showroom';
+
   // Made to order: verify we can safely convert the length. If not, flag review.
   const len = calculateSupplierLength(input.customerOrderedLength);
   if (len.needsReview) {
     return {
       orderType: 'needs_review',
       status: 'manager_review_required',
-      shippingDestination: 'mhw_showroom',
+      shippingDestination: madeToOrderDest,
       needsReview: true,
       reviewReason: len.reason ?? 'Length requires manual confirmation',
     };
@@ -49,7 +63,7 @@ export function classifyOrder(input: ClassifyInput): ClassifyResult {
   return {
     orderType: 'made_to_order',
     status: 'new_made_to_order',
-    shippingDestination: 'mhw_showroom',
+    shippingDestination: madeToOrderDest,
     needsReview: false,
   };
 }
