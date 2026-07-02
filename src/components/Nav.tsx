@@ -7,6 +7,7 @@ const STAFF_LINKS = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/orders', label: 'Production Orders' },
   { href: '/orders/new', label: 'Add Order' },
+  { href: '/inbox', label: 'Messages' },
   { href: '/qc', label: 'QC Queue' },
   { href: '/customer-updates', label: 'Customer Updates' },
   { href: '/product-mappings', label: 'Product Mapping' },
