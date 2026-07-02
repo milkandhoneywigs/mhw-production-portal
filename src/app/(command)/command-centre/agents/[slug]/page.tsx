@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Section, EmptyState } from '@/components/ui';
 import { CCBadge } from '@/components/command/CCBadge';
 import { CommandComposer } from '@/components/command/CommandComposer';
+import { CompletedWork } from '@/components/command/CompletedWork';
 import { agentStatusTone, riskTone, priorityTone, statusTone, money, STATUS_LABEL, type Agent, type AgentUpdate, type OwnerApproval, type OwnerRisk, type AgentCommand, type BusinessTask } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -96,6 +97,9 @@ export default async function AgentDetail({ params }: { params: { slug: string }
         </div>
         {PL?.objective && <p className="text-xs text-muted mt-2"><b>Objective:</b> {PL.objective}{PL.current_focus ? ` · Focus: ${PL.current_focus}` : ''}</p>}
       </Section>
+
+      {/* What has been done — never wonder */}
+      <CompletedWork agentId={a.id} />
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

@@ -7,6 +7,7 @@ import { CommandComposer } from '@/components/command/CommandComposer';
 import { ApprovalActions } from '@/components/command/ActionButtons';
 import { RiskActions } from '@/components/command/ActionButtons';
 import { OpportunityActions } from '@/components/command/OpportunityActions';
+import { CompletedWork, type DoneItem } from '@/components/command/CompletedWork';
 import { priorityTone, riskTone, money, type Agent, type OwnerApproval, type OwnerRisk } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -67,6 +68,16 @@ export default async function ClaudiaModule() {
   const Pill = ({ children, tone: tn = 'neutral' }: { children: React.ReactNode; tone?: any }) => (
     <CCBadge tone={tn}>{children}</CCBadge>
   );
+
+  // Completed module work for the Completed Work record.
+  const doneExtras: DoneItem[] = [
+    ...((opps ?? []) as any[]).filter((o) => o.status === 'completed').map((o) => ({
+      kind: 'optimisation', title: o.title, detail: o.description?.slice(0, 140), when: o.updated_at,
+    })),
+    ...((gaps ?? []) as any[]).filter((g) => g.status === 'resolved').map((g) => ({
+      kind: 'training', title: `Knowledge gap closed: ${g.gap_title}`, detail: g.suggested_training_content, when: g.updated_at,
+    })),
+  ];
 
   return (
     <>
@@ -294,6 +305,9 @@ export default async function ClaudiaModule() {
           </div>
         </Section>
       </div>
+
+      {/* What has been done — never wonder */}
+      <CompletedWork agentId={agent?.id ?? null} extraItems={doneExtras} />
 
       {/* Trending customer issues */}
       <Section title="Trending Customer Issues">

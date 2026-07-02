@@ -6,6 +6,7 @@ import { CCBadge } from '@/components/command/CCBadge';
 import { CommandComposer } from '@/components/command/CommandComposer';
 import { ApprovalActions, RiskActions } from '@/components/command/ActionButtons';
 import { ItemApproval } from '@/components/command/ItemApproval';
+import { CompletedWork, type DoneItem } from '@/components/command/CompletedWork';
 import { priorityTone, riskTone, money, type Agent, type OwnerApproval, type OwnerRisk } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,16 @@ export default async function SeoAgentModule() {
     CO.filter((c) => c.approval_status === 'needs_approval').length +
     SC.filter((s) => s.approval_status === 'needs_approval').length +
     PR.filter((p) => p.status === 'needs_approval').length;
+
+  // Implemented module items feed the Completed Work record.
+  const doneExtras: DoneItem[] = [
+    ...PR.filter((p) => p.status === 'implemented').map((p) => ({ kind: 'product SEO', title: `${p.product_name} — title/meta updated`, detail: p.suggested_title, when: p.updated_at })),
+    ...CO.filter((c) => c.approval_status === 'implemented').map((c) => ({ kind: 'collection SEO', title: `${c.collection_name} — on-page changes applied`, detail: c.faq_suggestions?.slice(0, 140), when: c.updated_at })),
+    ...SC.filter((s) => s.approval_status === 'implemented').map((s) => ({ kind: 'schema', title: `${s.page_url} — ${s.schema_type} schema applied`, detail: s.recommendation, when: s.updated_at })),
+    ...OP.filter((o) => o.status === 'completed').map((o) => ({ kind: 'optimisation', title: o.title, detail: o.description?.slice(0, 140), when: o.updated_at })),
+    ...GEO.filter((g) => g.approval_status === 'implemented').map((g) => ({ kind: 'GEO', title: g.question, detail: g.recommended_answer_content?.slice(0, 140), when: g.updated_at })),
+    ...CT.filter((c) => c.status === 'published').map((c) => ({ kind: 'blog', title: `Published: ${c.suggested_title}`, detail: c.target_keyword, when: c.updated_at })),
+  ];
 
   const Pill = CCBadge;
 
@@ -458,6 +469,9 @@ export default async function SeoAgentModule() {
           </Section>
         </div>
       </div>
+
+      {/* What has been done — never wonder */}
+      <CompletedWork agentId={agent?.id ?? null} extraItems={doneExtras} />
 
       {/* 13 — Performance */}
       <Section title="SEO Performance">
