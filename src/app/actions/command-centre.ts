@@ -130,6 +130,37 @@ export async function setTaskStatus(id: string, status: 'todo' | 'in_progress' |
   return {};
 }
 
+// Generic module-item approval: approve/reject any agent's drafted item by table.
+// WHITELISTED tables + their status column only — nothing else reachable.
+const APPROVABLE: Record<string, { column: string; approve: string; reject: string }> = {
+  seo_product_page_opportunities: { column: 'status', approve: 'approved', reject: 'dismissed' },
+  seo_collection_opportunities: { column: 'approval_status', approve: 'approved', reject: 'dismissed' },
+  seo_schema_opportunities: { column: 'approval_status', approve: 'approved', reject: 'dismissed' },
+  seo_geo_opportunities: { column: 'approval_status', approve: 'approved', reject: 'dismissed' },
+  seo_optimisation_opportunities: { column: 'status', approve: 'approved', reject: 'dismissed' },
+  seo_content_plan: { column: 'status', approve: 'approved', reject: 'dismissed' },
+  claudia_optimisation_opportunities: { column: 'status', approve: 'approved', reject: 'dismissed' },
+};
+
+export async function decideModuleItem(
+  table: string, id: string, decision: 'approve' | 'reject', note?: string,
+): Promise<{ error?: string }> {
+  const profile = await requireAdmin();
+  const spec = APPROVABLE[table];
+  if (!spec) return { error: `Not an approvable table: ${table}` };
+  const supabase = createClient();
+  const update: Record<string, unknown> = { [spec.column]: decision === 'approve' ? spec.approve : spec.reject };
+  // Owner note travels with the item — the agent reads it when implementing.
+  if (note?.trim()) update.decision_note = `${decision === 'approve' ? 'APPROVED' : 'DENIED'} by owner ${new Date().toISOString().slice(0, 10)}: ${note.trim()}`.slice(0, 1000);
+  const { error } = await supabase.from(table).update(update).eq('id', id);
+  if (error) return { error: error.message };
+  await logAudit({ actorId: profile.id, action: `module_item.${decision}`, entityType: table, entityId: id, metadata: note ? { note } : undefined });
+  revalidatePath('/command-centre/agents/seo-agent');
+  revalidatePath('/command-centre/agents/claudia-customer-service');
+  revalidatePath('/command-centre');
+  return {};
+}
+
 // Claudia module: move an optimisation opportunity through its lifecycle.
 export async function setOpportunityStatus(
   id: string, status: 'suggested' | 'approved' | 'in_progress' | 'completed' | 'dismissed',

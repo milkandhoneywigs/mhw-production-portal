@@ -203,3 +203,11 @@ begin
     execute format('create policy %1$s_admin_all on %1$s for all using (is_admin()) with check (is_admin())', t);
   end loop;
 end $$;
+-- Owner decision notes on every approvable module item (read by the agent when implementing).
+alter table seo_product_page_opportunities add column if not exists decision_note text;
+alter table seo_collection_opportunities add column if not exists decision_note text;
+alter table seo_schema_opportunities add column if not exists decision_note text;
+alter table seo_geo_opportunities add column if not exists decision_note text;
+alter table seo_optimisation_opportunities add column if not exists decision_note text;
+alter table seo_content_plan add column if not exists decision_note text;
+alter table claudia_optimisation_opportunities add column if not exists decision_note text;

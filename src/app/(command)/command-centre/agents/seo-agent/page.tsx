@@ -5,6 +5,7 @@ import { PageHeader, Section, EmptyState } from '@/components/ui';
 import { CCBadge } from '@/components/command/CCBadge';
 import { CommandComposer } from '@/components/command/CommandComposer';
 import { ApprovalActions, RiskActions } from '@/components/command/ActionButtons';
+import { ItemApproval } from '@/components/command/ItemApproval';
 import { priorityTone, riskTone, money, type Agent, type OwnerApproval, type OwnerRisk } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -88,6 +89,117 @@ export default async function SeoAgentModule() {
         Analyses, recommends and drafts. Anything customer-facing (titles, descriptions, URLs, redirects, schema,
         blogs) requires your approval before it goes live. Product titles and descriptions are never edited.
       </p>
+
+      {/* ⬆ APPROVALS FIRST — every drafted change with its full specifics + one-click decision */}
+      <Section title={`Approvals — Action Required (${needsApproval})`}>
+        {needsApproval === 0 ? <EmptyState>Nothing waiting on you.</EmptyState> : (
+          <div className="space-y-3">
+            {PR.filter((p) => p.status === 'needs_approval').map((p) => (
+              <div key={p.id} className="card p-4 ring-1 ring-amber-200">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <Pill tone="warn">APPROVAL REQUIRED</Pill><Pill tone="info">product meta</Pill>
+                      <span className="font-medium text-sm">{p.product_name}</span>
+                      <Pill tone={prio(p.priority)}>{p.priority}</Pill>
+                    </div>
+                    {p.current_title && (
+                      <div className="text-xs mb-1">
+                        <div className="text-muted">Current title:</div>
+                        <div className="line-through decoration-red-300 text-ink/60">{p.current_title}</div>
+                        <div className="text-muted mt-1">New title:</div>
+                        <div className="font-medium text-emerald-800">{p.suggested_title}</div>
+                      </div>
+                    )}
+                    {p.current_meta_description && (
+                      <div className="text-xs mb-1">
+                        <div className="text-muted mt-2">Current meta description:</div>
+                        <div className="line-through decoration-red-300 text-ink/60">{p.current_meta_description}</div>
+                        <div className="text-muted mt-1">New meta description:</div>
+                        <div className="font-medium text-emerald-800">{p.suggested_meta_description}</div>
+                      </div>
+                    )}
+                    {p.schema_recommendations && <p className="text-[11px] text-muted mt-2">{p.schema_recommendations}</p>}
+                  </div>
+                  <ItemApproval table="seo_product_page_opportunities" id={p.id} />
+                </div>
+              </div>
+            ))}
+
+            {CO.filter((c) => c.approval_status === 'needs_approval').map((c) => (
+              <div key={c.id} className="card p-4 ring-1 ring-amber-200">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <Pill tone="warn">APPROVAL REQUIRED</Pill><Pill tone="info">collection</Pill>
+                      <span className="font-medium text-sm">{c.collection_name}</span>
+                      <Pill tone={prio(c.priority)}>{c.priority}</Pill>
+                      {c.collection_url && <span className="text-[11px] font-mono text-muted">{c.collection_url}</span>}
+                    </div>
+                    {c.suggested_meta_title && <p className="text-xs mb-1"><span className="text-muted">New meta title:</span> <span className="font-medium text-emerald-800">{c.suggested_meta_title}</span></p>}
+                    {c.suggested_collection_description && <p className="text-xs mb-1"><span className="text-muted">New description:</span> {c.suggested_collection_description}</p>}
+                    {c.faq_suggestions && <p className="text-xs whitespace-pre-wrap">{c.faq_suggestions}</p>}
+                  </div>
+                  <ItemApproval table="seo_collection_opportunities" id={c.id} />
+                </div>
+              </div>
+            ))}
+
+            {SC.filter((s) => s.approval_status === 'needs_approval').map((s) => (
+              <div key={s.id} className="card p-4 ring-1 ring-amber-200">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <Pill tone="warn">APPROVAL REQUIRED</Pill><Pill tone="info">schema · {s.schema_type}</Pill>
+                      <span className="font-mono text-xs">{s.page_url}</span>
+                      <Pill tone={prio(s.priority)}>{s.priority}</Pill>
+                    </div>
+                    {s.issue_description && <p className="text-xs text-muted">{s.issue_description}</p>}
+                    {s.recommendation && <p className="text-xs mt-1"><span className="text-muted">Change:</span> {s.recommendation}</p>}
+                  </div>
+                  <ItemApproval table="seo_schema_opportunities" id={s.id} />
+                </div>
+              </div>
+            ))}
+
+            {OP.filter((o) => o.status === 'needs_approval').map((o) => (
+              <div key={o.id} className="card p-4 ring-1 ring-amber-200">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <Pill tone="warn">APPROVAL REQUIRED</Pill><Pill tone="honey">{o.opportunity_type.replace('_', ' ')}</Pill>
+                      <span className="font-medium text-sm">{o.title}</span>
+                      <Pill tone={prio(o.priority)}>{o.priority}</Pill>
+                      <Pill tone={o.estimated_impact === 'high' ? 'good' : 'neutral'}>impact: {o.estimated_impact}</Pill>
+                    </div>
+                    {o.description && <p className="text-xs text-muted">{o.description}</p>}
+                  </div>
+                  <ItemApproval table="seo_optimisation_opportunities" id={o.id} />
+                </div>
+              </div>
+            ))}
+
+            {GEO.filter((g) => g.approval_status === 'needs_approval').map((g) => (
+              <div key={g.id} className="card p-4 ring-1 ring-amber-200">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <Pill tone="warn">APPROVAL REQUIRED</Pill><Pill tone="info">GEO</Pill>
+                      <span className="font-medium text-sm">{g.question}</span>
+                    </div>
+                    {g.recommended_answer_content && <p className="text-xs text-muted">{g.recommended_answer_content}</p>}
+                  </div>
+                  <ItemApproval table="seo_geo_opportunities" id={g.id} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-[11px] text-muted mt-2">
+          Approving marks the change ready for the SEO agent to implement on its next run — nothing publishes at the moment you click.
+          Rejecting dismisses the draft.
+        </p>
+      </Section>
 
       {/* 1 — Overview */}
       <Section title="SEO Agent Overview">
