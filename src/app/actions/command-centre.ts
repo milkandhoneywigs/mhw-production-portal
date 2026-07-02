@@ -155,6 +155,36 @@ export async function decideModuleItem(
   const { error } = await supabase.from(table).update(update).eq('id', id);
   if (error) return { error: error.message };
   await logAudit({ actorId: profile.id, action: `module_item.${decision}`, entityType: table, entityId: id, metadata: note ? { note } : undefined });
+
+  // IMMEDIATE EXECUTION: approving queues an implement-command for the owning
+  // agent; the Mac Studio runner picks it up within ~15s (no waiting for the
+  // daily run). One open implement-command per agent — approvals batch into it.
+  if (decision === 'approve') {
+    const slug = table.startsWith('claudia_') ? 'claudia-customer-service' : 'seo-agent';
+    const { data: agent } = await supabase.from('agents').select('id').eq('slug', slug).maybeSingle();
+    if (agent) {
+      const { data: openCmd } = await supabase
+        .from('agent_commands').select('id')
+        .eq('agent_id', agent.id).in('status', ['queued', 'claimed'])
+        .ilike('title', 'Implement owner-approved%').limit(1).maybeSingle();
+      if (!openCmd) {
+        await supabase.from('agent_commands').insert({
+          agent_id: agent.id,
+          created_by: profile.id,
+          title: 'Implement owner-approved items (auto-queued on approval)',
+          prompt: slug === 'seo-agent'
+            ? 'The owner has just APPROVED one or more SEO items in the Command Centre. Read the Supabase creds from ~/mhw-production-portal/.env.local (Bash) and query via REST the tables seo_product_page_opportunities, seo_collection_opportunities, seo_schema_opportunities, seo_optimisation_opportunities, seo_geo_opportunities, seo_content_plan for every row with status/approval_status = \'approved\'. Implement EACH per your standing autonomy + execution rules (publish via scoped Shopify token if present, otherwise produce finished publish-ready output in the seo-geo working files; NEVER touch product titles/descriptions; visual copy was approved by the owner so it may be finalised). Read each row\'s decision_note for owner instructions. After implementing an item, PATCH its status/approval_status to \'implemented\'. Finish with a concise report of exactly what was done per item and anything blocked (e.g. missing Shopify token) and why.'
+            : 'The owner has just APPROVED one or more Claudia optimisation items in the Command Centre. Read the Supabase creds from ~/mhw-production-portal/.env.local (Bash) and query via REST claudia_optimisation_opportunities for rows with status = \'approved\'. Implement each per Claudia\'s rules (templates/knowledge/rules work inside her repo and the business brain; drafts only, nothing customer-facing is sent). Read decision_note for owner instructions. PATCH implemented rows to status \'completed\'. Report exactly what was done per item.',
+          command_type: 'workflow',
+          priority: 'high',
+          status: 'queued',
+          execution_target: 'mac_studio',
+          execution_mode: 'local_agent',
+        });
+      }
+    }
+  }
+
   revalidatePath('/command-centre/agents/seo-agent');
   revalidatePath('/command-centre/agents/claudia-customer-service');
   revalidatePath('/command-centre');
