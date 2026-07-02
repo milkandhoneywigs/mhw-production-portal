@@ -41,8 +41,8 @@ export default async function FinancialsPage() {
           <Fin label="Last 7 days" value={money(F?.week_revenue)} tone="good" />
           <Fin label="Month to date" value={money(F?.month_revenue)} tone="honey" />
           <Fin label="Online revenue (MTD)" value={money(F?.online_revenue)} />
-          <Fin label="In-store revenue" value="—" />
-          <Fin label="Outlet revenue" value="—" />
+          <Fin label="In-store revenue (Fresha)" value={F?.instore_revenue ? money(F.instore_revenue) : '—'} />
+          <Fin label="Outlet revenue" value={F?.outlet_revenue ? money(F.outlet_revenue) : '—'} />
           <Fin label="Refunds" value={money(F?.refunds)} tone="warn" />
           <Fin label="Net sales (MTD)" value={money(F?.net_sales)} tone="good" />
         </div>
