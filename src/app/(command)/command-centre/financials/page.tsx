@@ -16,7 +16,9 @@ function Fin({ label, value, tone = 'neutral' }: { label: string; value: string;
   );
 }
 
-const INTEGRATIONS = ['Shopify', 'Fresha (in-store)', 'Xero', 'PayPal', 'Bank feed', 'Gorgias', 'Google Ads', 'Meta Ads', 'Klaviyo', 'Omnisend'];
+// Connected (read-only) via the Supermetrics connection; the rest are planned.
+const CONNECTED = ['Google Analytics (GA4)', 'Google Ads', 'Meta Ads', 'Klaviyo', 'Gorgias'];
+const PLANNED = ['Shopify', 'Fresha (in-store)', 'Xero', 'PayPal', 'Bank feed', 'Omnisend'];
 
 export default async function FinancialsPage() {
   await requireAdmin();
@@ -70,12 +72,16 @@ export default async function FinancialsPage() {
         <p className="text-xs text-muted mt-2">Orders paid by customer but not yet sent to supplier, complaint/refund risk, and large upcoming expenses will populate here once Shopify/Xero connect.</p>
       </Section>
 
-      <Section title="Future integrations (planned)">
+      <Section title="Data connections">
         <div className="flex flex-wrap gap-2">
-          {INTEGRATIONS.map((i) => (
+          {CONNECTED.map((i) => (
+            <span key={i} className="text-xs rounded-full px-3 py-1 ring-1 ring-emerald-200 bg-emerald-50 text-emerald-700">{i} · connected (Supermetrics)</span>
+          ))}
+          {PLANNED.map((i) => (
             <span key={i} className="text-xs rounded-full px-3 py-1 ring-1 ring-beige bg-white text-muted">{i} · planned</span>
           ))}
         </div>
+        <p className="text-xs text-muted mt-2">Connected sources are readable now via Supermetrics. Today only GA4 revenue feeds this dashboard — the daily sync can be extended to pull Google/Meta spend, Klaviyo and Gorgias into the snapshot too.</p>
       </Section>
     </>
   );
