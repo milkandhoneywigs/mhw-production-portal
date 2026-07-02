@@ -9,6 +9,9 @@ import {
   type Agent, type AgentCommand, type OwnerApproval, type OwnerRisk, type AgentUpdate, type BusinessTask, type FinancialSnapshot,
 } from '@/lib/command-centre/cc';
 import { getLiveOps } from '@/lib/command-centre/live';
+import { getRevenueAnalytics } from '@/lib/command-centre/series';
+import { TrendCard, TrendBadge } from '@/components/command/TrendCard';
+import { Sparkline } from '@/components/command/Charts';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +58,7 @@ export default async function OwnerDashboard() {
   const TK = (tasks ?? []) as BusinessTask[];
   const F = (snap ?? null) as FinancialSnapshot | null;
   const ops = await getLiveOps(sb); // live from the production DB (orders + invoices)
+  const rev = await getRevenueAnalytics(sb, 30); // GA4 daily series
   const agentName = (id: string | null) => A.find((a) => a.id === id)?.name ?? '—';
 
   const today = new Date().toISOString().slice(0, 10);
@@ -117,13 +121,18 @@ export default async function OwnerDashboard() {
         </div>
       </Section>
 
-      {/* Financial snapshot */}
+      {/* Financial snapshot — trend cards + 30-day sparkline (GA4) */}
       <Section title="Financial Snapshot" action={<Link href="/command-centre/financials" className="text-xs text-honey hover:underline">Full financials →</Link>}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Metric label="Today's revenue" value={money(F?.today_revenue)} />
-          <Metric label="This week" value={money(F?.week_revenue)} />
-          <Metric label="This month" value={money(F?.month_revenue)} tone="honey" />
-          <Metric label="Net sales (MTD)" value={money(F?.net_sales)} />
+          <div className="card p-4 hover:shadow-md transition">
+            <div className="text-xs font-medium text-muted">Online sales · last 30 days</div>
+            <div className="text-2xl font-semibold tabular-nums mt-1">{money(rev.currentStats.revenue)}</div>
+            <div className="mt-1 flex items-center gap-1.5"><TrendBadge change={rev.change.revenue} /><span className="text-[11px] text-muted">vs prev 30 days</span></div>
+            <div className="mt-2 -mb-1"><Sparkline data={rev.current.map((p) => ({ date: p.date, revenue: p.revenue }))} /></div>
+          </div>
+          <TrendCard label="Average order value" value={rev.currentStats.aov != null ? money(rev.currentStats.aov) : '—'} change={rev.change.aov} />
+          <TrendCard label="Orders (30 days)" value={String(rev.currentStats.transactions)} change={rev.change.transactions} />
+          <TrendCard label="Conversion rate" value={rev.currentStats.conversion != null ? `${rev.currentStats.conversion.toFixed(2)}%` : '—'} change={rev.change.conversion} />
         </div>
         {F?.notes && <p className="text-xs text-muted mt-2">{F.notes}</p>}
       </Section>
