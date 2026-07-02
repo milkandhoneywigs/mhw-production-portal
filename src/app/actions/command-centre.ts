@@ -98,6 +98,38 @@ export async function decideApproval(
   return {};
 }
 
+// Create a business task (owner or on behalf of an agent).
+export async function createTask(formData: FormData): Promise<{ error?: string }> {
+  await requireAdmin();
+  const supabase = createClient();
+  const title = s(formData, 'title');
+  if (!title) return { error: 'Task title required.' };
+  const { error } = await supabase.from('business_tasks').insert({
+    title,
+    description: s(formData, 'description'),
+    source_module: (s(formData, 'source_module') as any) ?? 'command_centre',
+    agent_id: s(formData, 'agent_id'),
+    priority: (s(formData, 'priority') as any) ?? 'medium',
+    status: 'todo',
+    due_at: s(formData, 'due_at') ? new Date(s(formData, 'due_at')!).toISOString() : null,
+  });
+  if (error) return { error: error.message };
+  revalidatePath('/command-centre/tasks');
+  revalidatePath('/command-centre');
+  return {};
+}
+
+// Move a task through the board.
+export async function setTaskStatus(id: string, status: 'todo' | 'in_progress' | 'blocked' | 'done' | 'cancelled'): Promise<{ error?: string }> {
+  await requireAdmin();
+  const supabase = createClient();
+  const { error } = await supabase.from('business_tasks').update({ status }).eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath('/command-centre/tasks');
+  revalidatePath('/command-centre');
+  return {};
+}
+
 // Owner action on a risk.
 export async function updateRiskStatus(
   id: string, status: 'acknowledged' | 'resolved' | 'dismissed',

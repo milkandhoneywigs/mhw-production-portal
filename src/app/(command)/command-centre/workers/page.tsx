@@ -19,11 +19,12 @@ export default async function WorkersPage() {
 
   return (
     <>
-      <PageHeader title="Workers" subtitle="Execution machines. The Mac Studio Agent Runner (built later) claims queued commands and writes results back." />
+      <PageHeader title="Workers" subtitle="Execution machines. The Mac Studio Agent Runner claims queued commands, runs them locally via Claude Code, and writes results back." />
 
-      <div className="card p-4 mb-6 ring-1 ring-honey/40 bg-honey/5 text-sm">
-        The local <b>Mac Studio Agent Runner</b> is not built yet. This page will show its live status once it polls Supabase.
-        Commands you send are safely queued in the meantime.
+      <div className="card p-4 mb-6 ring-1 ring-emerald-200 bg-emerald-50/50 text-sm">
+        The <b>Mac Studio Agent Runner</b> is installed and always-on (launchd, auto-restart). It polls every 15s,
+        runs one command at a time under each agent&apos;s standing rules (suggest-only, 15-min timeout), and heartbeats here.
+        If it shows offline, the Mac Studio is asleep or the runner needs a restart.
       </div>
 
       {W.length === 0 ? <EmptyState>No workers registered.</EmptyState> : (

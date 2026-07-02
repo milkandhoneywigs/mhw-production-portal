@@ -16,15 +16,15 @@ const COMMAND_LINKS = [
   { href: `${CC}/workers`, label: 'Workers' },
 ];
 
-// Only Production is live; the rest are planned placeholders.
-const MODULES: { label: string; href?: string }[] = [
-  { label: 'Production Portal', href: '/production' },
-  { label: 'Customer Service' },
-  { label: 'SEO' },
-  { label: 'Marketing' },
-  { label: 'Inventory' },
-  { label: 'Finance' },
-  { label: 'Partnerships' },
+// Every module opens its agent's workspace; Production also has the full portal.
+const MODULES: { label: string; href?: string; tag?: string }[] = [
+  { label: 'Production Portal', href: '/production', tag: 'OPEN' },
+  { label: 'Customer Service', href: '/command-centre/agents/claudia-customer-service', tag: 'CLAUDIA' },
+  { label: 'SEO', href: '/command-centre/agents/seo-agent', tag: 'LIVE' },
+  { label: 'Marketing', href: '/command-centre/agents/marketing-agent', tag: 'LIVE' },
+  { label: 'Inventory', href: '/command-centre/agents/inventory-agent', tag: 'PLANNED' },
+  { label: 'Finance', href: '/command-centre/agents/finance-agent', tag: 'PLANNED' },
+  { label: 'Partnerships', href: '/command-centre/agents/partnerships-agent', tag: 'PLANNED' },
 ];
 
 export function CommandNav() {
@@ -48,19 +48,13 @@ export function CommandNav() {
       <div>
         <div className="px-3 mb-1 text-[10px] uppercase tracking-[0.2em] text-honey font-semibold">Modules</div>
         <div className="flex flex-col gap-0.5">
-          {MODULES.map((m) =>
-            m.href ? (
-              <Link key={m.label} href={m.href}
-                className="rounded-lg px-3 py-1.5 text-sm font-medium text-ink hover:bg-sand transition flex items-center justify-between">
-                {m.label}<span className="text-[10px] text-emerald-700">OPEN</span>
-              </Link>
-            ) : (
-              <span key={m.label}
-                className="rounded-lg px-3 py-1.5 text-sm text-muted flex items-center justify-between cursor-default">
-                {m.label}<span className="text-[10px] uppercase tracking-wide text-muted">Planned</span>
-              </span>
-            ),
-          )}
+          {MODULES.map((m) => (
+            <Link key={m.label} href={m.href!}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition flex items-center justify-between ${isActive(m.href!) ? 'bg-ink text-cream' : 'text-ink hover:bg-sand'}`}>
+              {m.label}
+              <span className={`text-[9px] tracking-wide ${m.tag === 'PLANNED' ? 'text-muted' : 'text-emerald-700'}`}>{m.tag}</span>
+            </Link>
+          ))}
         </div>
       </div>
     </nav>
