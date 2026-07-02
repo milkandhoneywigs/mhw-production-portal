@@ -16,6 +16,7 @@ const STAFF_LINKS = [
 const ADMIN_LINKS = [
   { href: '/billing', label: 'Billing' },
   { href: '/settings/users', label: 'Users & Settings' },
+  { href: '/command-centre', label: '⌘ Command Centre' },
 ];
 const SUPPLIER_LINKS = [{ href: '/supplier', label: 'My Orders' }];
 
