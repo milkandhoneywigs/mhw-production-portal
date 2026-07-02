@@ -140,6 +140,12 @@ const APPROVABLE: Record<string, { column: string; approve: string; reject: stri
   seo_optimisation_opportunities: { column: 'status', approve: 'approved', reject: 'dismissed' },
   seo_content_plan: { column: 'status', approve: 'approved', reject: 'dismissed' },
   claudia_optimisation_opportunities: { column: 'status', approve: 'approved', reject: 'dismissed' },
+  mkt_cro_opportunities: { column: 'approval_status', approve: 'approved', reject: 'dismissed' },
+  mkt_creative_requests: { column: 'status', approve: 'approved', reject: 'dismissed' },
+  mkt_email_opportunities: { column: 'status', approve: 'approved', reject: 'dismissed' },
+  mkt_campaign_calendar: { column: 'status', approve: 'approved', reject: 'cancelled' },
+  mkt_growth_experiments: { column: 'status', approve: 'approved', reject: 'dismissed' },
+  mkt_budget_recommendations: { column: 'status', approve: 'approved', reject: 'dismissed' },
 };
 
 export async function decideModuleItem(
@@ -160,7 +166,8 @@ export async function decideModuleItem(
   // agent; the Mac Studio runner picks it up within ~15s (no waiting for the
   // daily run). One open implement-command per agent — approvals batch into it.
   if (decision === 'approve') {
-    const slug = table.startsWith('claudia_') ? 'claudia-customer-service' : 'seo-agent';
+    const slug = table.startsWith('claudia_') ? 'claudia-customer-service'
+      : table.startsWith('mkt_') ? 'marketing-agent' : 'seo-agent';
     const { data: agent } = await supabase.from('agents').select('id').eq('slug', slug).maybeSingle();
     if (agent) {
       const { data: openCmd } = await supabase
@@ -172,7 +179,9 @@ export async function decideModuleItem(
           agent_id: agent.id,
           created_by: profile.id,
           title: 'Implement owner-approved items (auto-queued on approval)',
-          prompt: slug === 'seo-agent'
+          prompt: slug === 'marketing-agent'
+            ? 'The owner has just APPROVED one or more Marketing items in the Command Centre. Read the Supabase creds from ~/mhw-production-portal/.env.local (Bash) and query via REST the tables mkt_cro_opportunities, mkt_creative_requests, mkt_email_opportunities, mkt_campaign_calendar, mkt_growth_experiments, mkt_budget_recommendations for every row with status/approval_status = \'approved\'. Implement each per your OPERATING-SYSTEM rules: produce the finished work product (test design, staged campaign build, flow draft, creative brief, reallocation plan) in arms/marketing/ — you still NEVER spend money, launch/pause ads, send email or change the live store; approval authorises the WORK, execution of spend stays with the owner. Read decision_note for owner instructions. PATCH implemented rows to \'implemented\' (or \'in_production\'/\'approved\'-appropriate next status for creative/calendar). Report per the AGENT-REPORTING-STANDARD: RESULTS / DONE / NEXT / BLOCKED / NEEDS YOU.'
+            : slug === 'seo-agent'
             ? 'The owner has just APPROVED one or more SEO items in the Command Centre. Read the Supabase creds from ~/mhw-production-portal/.env.local (Bash) and query via REST the tables seo_product_page_opportunities, seo_collection_opportunities, seo_schema_opportunities, seo_optimisation_opportunities, seo_geo_opportunities, seo_content_plan for every row with status/approval_status = \'approved\'. Implement EACH per your standing autonomy + execution rules (publish via scoped Shopify token if present, otherwise produce finished publish-ready output in the seo-geo working files; NEVER touch product titles/descriptions; visual copy was approved by the owner so it may be finalised). Read each row\'s decision_note for owner instructions. After implementing an item, PATCH its status/approval_status to \'implemented\'. Finish with a concise report of exactly what was done per item and anything blocked (e.g. missing Shopify token) and why.'
             : 'The owner has just APPROVED one or more Claudia optimisation items in the Command Centre. Read the Supabase creds from ~/mhw-production-portal/.env.local (Bash) and query via REST claudia_optimisation_opportunities for rows with status = \'approved\'. Implement each per Claudia\'s rules (templates/knowledge/rules work inside her repo and the business brain; drafts only, nothing customer-facing is sent). Read decision_note for owner instructions. PATCH implemented rows to status \'completed\'. Report exactly what was done per item.',
           command_type: 'workflow',
