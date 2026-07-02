@@ -137,12 +137,17 @@ export default async function MarketingAgentModule() {
       {/* Overview */}
       <Section title="Marketing Overview">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <div className="card p-3"><div className="text-[11px] text-muted">Google spend (30d)</div><div className="text-xl font-semibold tabular-nums">{money(B?.google_spend)}</div><div className="text-[10px] text-muted">real, acct 8724615421</div></div>
-          <div className="card p-3"><div className="text-[11px] text-muted">Google blended ROAS</div><div className="text-xl font-semibold tabular-nums text-emerald-700">{B?.google_roas ? `${Number(B.google_roas).toFixed(1)}×` : '—'}</div></div>
-          <div className="card p-3"><div className="text-[11px] text-muted">True blended MER</div><div className="text-xl font-semibold tabular-nums">{B?.mer ? `${Number(B.mer).toFixed(1)}×` : '—'}</div><div className="text-[10px] text-muted">[DATA NEEDED: Meta + Fresha]</div></div>
-          <div className="card p-3"><div className="text-[11px] text-muted">International ad spend</div><div className="text-xl font-semibold tabular-nums text-red-600">$0</div><div className="text-[10px] text-muted">vs 6,489 US sessions/90d (real)</div></div>
+          <div className="card p-3"><div className="text-[11px] text-muted">AU ad spend (30d)</div><div className="text-xl font-semibold tabular-nums">{money(B?.google_spend)}</div><div className="text-[10px] text-muted">Google (real) · Meta [DATA NEEDED]</div></div>
+          <div className="card p-3"><div className="text-[11px] text-muted">International ad spend (30d)</div><div className="text-xl font-semibold tabular-nums text-red-600">$0.00</div><div className="text-[10px] text-muted">all campaigns AU-only (real) vs 6,489 US sessions/90d</div></div>
+          <div className="card p-3">
+            <div className="text-[11px] text-muted">Blended MER (30d)</div>
+            <div className="text-xl font-semibold tabular-nums text-emerald-700">{B?.mer ? `${Number(B.mer).toFixed(1)}×` : '—'}</div>
+            <div className="text-[10px] text-muted">{B?.mer ? `ad spend = ${(100 / Number(B.mer)).toFixed(1)}% of revenue` : ''} · website rev {money(B?.blended_revenue)} ÷ spend {money(B?.google_spend)}</div>
+          </div>
+          <div className="card p-3"><div className="text-[11px] text-muted">Google blended ROAS (30d)</div><div className="text-xl font-semibold tabular-nums text-emerald-700">{B?.google_roas ? `${Number(B.google_roas).toFixed(1)}×` : '—'}</div><div className="text-[10px] text-muted">platform-attributed {money(B?.attributed_revenue)}</div></div>
           <div className="card p-3"><div className="text-[11px] text-muted">Last run</div><div className="text-sm font-semibold mt-0.5">{lastRun ? new Date(lastRun.created_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'awaiting first report'}</div><div className="text-[10px] text-muted">daily 7:45am + on command</div></div>
         </div>
+        <p className="text-[11px] text-muted mt-2">MER = total revenue ÷ total ad spend. Current figure uses website revenue (GA4) ÷ Google spend — Meta spend will lower it slightly, in-store Fresha revenue will raise it; both connect next.</p>
       </Section>
 
       {/* Command */}
