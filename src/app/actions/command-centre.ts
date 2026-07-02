@@ -130,6 +130,60 @@ export async function setTaskStatus(id: string, status: 'todo' | 'in_progress' |
   return {};
 }
 
+// Owner idea -> agent-orchestrated business plan. The idea is queued as a
+// Chief-of-Staff command; the Mac Studio generates a grounded plan assigning
+// every agent its role, files it back, and seeds the tasks. Nothing executes
+// beyond planning without the owner's approval.
+export async function createIdeaPlan(formData: FormData): Promise<{ error?: string; id?: string }> {
+  const profile = await requireAdmin();
+  const supabase = createClient();
+  const idea = s(formData, 'idea');
+  if (!idea) return { error: 'Type an idea first.' };
+
+  const prompt = `OWNER IDEA (from Yasmin, via the Command Centre idea box): "${idea}"
+
+You are the CHIEF OF STAFF for Beyond Reason Pty Ltd (Milk & Honey Wigs PREMIUM + MH Wigs Outlet —
+two separate businesses, never blended). Turn this idea into a decision-grade BUSINESS PLAN that
+orchestrates the agent team. Ground every claim in real data: read ~/business-brain (CLAUDE.md,
+knowledge/, the GROWTH-LEDGER, each arm's GAME-PLAN and latest daily reports) and pull live figures
+from the portal DB via Supabase REST (creds in ~/mhw-production-portal/.env.local). NEVER invent a
+number — cite the source or write [DATA NEEDED].
+
+THE PLAN (keep it tight, owner-readable):
+1. THE PLAY — what we're doing and why now, in 3 sentences, with the key numbers.
+2. PHASES — 2-4 phases with entry/exit criteria.
+3. AGENT ASSIGNMENTS — for EACH relevant agent (Mabel/production, Claudia/customer service,
+   SEO agent, Marketing agent, and the planned Inventory/Finance/Partnerships agents where relevant):
+   their specific role, their first 3 concrete tasks, and what they report back.
+4. NEEDS OWNER — approvals, budgets, logins or decisions required, one line each.
+5. RISKS — top 3 with mitigations.
+6. FIRST 7 DAYS — day-by-day what happens if approved today.
+7. SUCCESS METRICS — what we re-measure and when.
+
+THEN MAKE IT REAL: insert one business_tasks row per agent assignment (Supabase REST:
+title = the agent's first task, description = their role in this plan + "From owner idea: ${idea}",
+source_module = the agent's module, agent_id = the agent's id from the agents table, status = 'todo',
+priority = 'high'). These appear on each agent's Workboard and the Tasks board.
+
+Report per the AGENT-REPORTING-STANDARD; the full plan IS the report. Sign as "Chief of Staff".`;
+
+  const { data, error } = await supabase.from('agent_commands').insert({
+    agent_id: null,
+    created_by: profile.id,
+    title: `Business plan: ${idea.slice(0, 70)}`,
+    prompt,
+    command_type: 'workflow',
+    priority: 'high',
+    status: 'queued',
+    execution_target: 'mac_studio',
+    execution_mode: 'local_agent',
+  }).select('id').single();
+  if (error || !data) return { error: `Could not queue the plan: ${error?.message}` };
+  await logAudit({ actorId: profile.id, action: 'idea.plan', entityType: 'agent_command', entityId: data.id, metadata: { idea } });
+  revalidatePath('/command-centre');
+  return { id: data.id };
+}
+
 // Generic module-item approval: approve/reject any agent's drafted item by table.
 // WHITELISTED tables + their status column only — nothing else reachable.
 const APPROVABLE: Record<string, { column: string; approve: string; reject: string }> = {

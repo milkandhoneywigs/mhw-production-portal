@@ -12,6 +12,7 @@ import { getLiveOps } from '@/lib/command-centre/live';
 import { getRevenueAnalytics } from '@/lib/command-centre/series';
 import { TrendCard, TrendBadge } from '@/components/command/TrendCard';
 import { Sparkline } from '@/components/command/Charts';
+import { IdeaBox } from '@/components/command/IdeaBox';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,7 +41,7 @@ export default async function OwnerDashboard() {
   const profile = await requireAdmin();
   const sb = createClient();
 
-  const [{ data: agents }, { data: commands }, { data: approvals }, { data: risks }, { data: snap }, { data: updates }, { data: tasks }] = await Promise.all([
+  const [{ data: agents }, { data: commands }, { data: approvals }, { data: risks }, { data: snap }, { data: updates }, { data: tasks }, { data: ideaCmds }] = await Promise.all([
     sb.from('agents').select('*').order('created_at'),
     sb.from('agent_commands').select('id,title,agent_id,status,priority,command_type,created_at,completed_at,result_summary').order('created_at', { ascending: false }).limit(50),
     sb.from('owner_approvals').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
@@ -48,7 +49,17 @@ export default async function OwnerDashboard() {
     sb.from('financial_snapshots').select('*').order('snapshot_date', { ascending: false }).limit(1).maybeSingle(),
     sb.from('agent_updates').select('*').order('created_at', { ascending: false }).limit(6),
     sb.from('business_tasks').select('*').in('status', ['todo', 'in_progress', 'blocked']).order('created_at', { ascending: false }).limit(8),
+    sb.from('agent_commands').select('id,title,status,created_at,result_summary').ilike('title', 'Business plan:%').order('created_at', { ascending: false }).limit(4),
   ]);
+  // Full plan text for completed idea plans.
+  const ideaIds = ((ideaCmds ?? []) as { id: string }[]).map((c) => c.id);
+  const { data: ideaResults } = ideaIds.length
+    ? await sb.from('agent_command_results').select('command_id,content').in('command_id', ideaIds)
+    : { data: [] as any[] };
+  const planFor = (id: string) => (ideaResults ?? []).find((r: any) => r.command_id === id)?.content as string | undefined;
+  // Pulse: alerts filed by the sentinels (site down / conversion down / opportunities).
+  const pulseRisks = RKfilter((risks ?? []) as OwnerRisk[]);
+  function RKfilter(rs: OwnerRisk[]) { return rs.filter((r) => r.title.startsWith('PULSE')); }
 
   const A = (agents ?? []) as Agent[];
   const C = (commands ?? []) as AgentCommand[];
@@ -73,6 +84,28 @@ export default async function OwnerDashboard() {
     <>
       <PageHeader title={`Welcome back, ${(profile.full_name || 'Yasmin').split(' ')[0]}`}
         subtitle="Beyond Reason Command Centre — what needs you today." />
+
+      {/* PULSE — the portal watching the business. Site checks every 10 min,
+          conversion/traffic hourly; alerts engage the right agent automatically. */}
+      <div className={`card p-4 mb-6 ring-1 ${pulseRisks.length ? 'ring-red-200 bg-red-50/40' : 'ring-emerald-200 bg-emerald-50/30'}`}>
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${pulseRisks.length ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
+          <span className="text-sm font-semibold">Business Pulse</span>
+          {pulseRisks.length === 0 ? (
+            <span className="text-sm text-emerald-800">All clear — site, checkout and conversion monitors report no active issues.</span>
+          ) : (
+            <span className="text-sm text-red-700 font-medium">{pulseRisks.length} active alert{pulseRisks.length === 1 ? '' : 's'}</span>
+          )}
+          <Link href="/command-centre/risks" className="text-xs text-honey hover:underline ml-auto">All risks →</Link>
+        </div>
+        {pulseRisks.slice(0, 3).map((r) => (
+          <div key={r.id} className="mt-2 text-sm flex items-center gap-2">
+            <CCBadge tone={riskTone(r.risk_level)}>{r.risk_level}</CCBadge>
+            <span className="font-medium">{r.title.replace('PULSE: ', '')}</span>
+            <span className="text-xs text-muted">{r.description?.slice(0, 100)}</span>
+          </div>
+        ))}
+      </div>
 
       {/* Owner attention cards — operational metrics are LIVE from the production DB */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
@@ -206,6 +239,33 @@ export default async function OwnerDashboard() {
                 {u.summary && <p className="text-xs text-muted mt-1">{u.summary}</p>}
               </div>
             ))}
+          </div>
+        )}
+      </Section>
+
+      {/* Ideas -> business plans (the smart box) */}
+      <Section title="Your Ideas — Turned Into Plans">
+        <IdeaBox />
+        {(ideaCmds ?? []).length > 0 && (
+          <div className="space-y-2 mt-4">
+            {((ideaCmds ?? []) as any[]).map((c) => {
+              const plan = c.status === 'completed' ? planFor(c.id) : null;
+              return (
+                <details key={c.id} className="card p-4">
+                  <summary className="cursor-pointer flex items-center gap-2 flex-wrap">
+                    <CCBadge tone={c.status === 'completed' ? 'good' : c.status === 'failed' ? 'danger' : 'honey'}>
+                      {c.status === 'completed' ? 'PLAN READY' : c.status === 'failed' ? 'FAILED' : 'PLANNING…'}
+                    </CCBadge>
+                    <span className="text-sm font-medium">{c.title.replace('Business plan: ', '')}</span>
+                    <span className="text-[11px] text-muted ml-auto">{new Date(c.created_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                  </summary>
+                  {plan
+                    ? <pre className="text-xs text-ink/85 whitespace-pre-wrap mt-3 font-sans">{plan}</pre>
+                    : <p className="text-xs text-muted mt-3">{c.status === 'completed' ? c.result_summary : 'The Chief of Staff is drafting — refresh in a couple of minutes. Agent tasks are seeded automatically when the plan lands.'}</p>}
+                  {c.status === 'completed' && <Link href={`/command-centre/commands/${c.id}`} className="text-xs text-honey hover:underline mt-2 inline-block">Open full record →</Link>}
+                </details>
+              );
+            })}
           </div>
         )}
       </Section>
