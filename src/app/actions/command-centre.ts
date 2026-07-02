@@ -130,6 +130,18 @@ export async function setTaskStatus(id: string, status: 'todo' | 'in_progress' |
   return {};
 }
 
+// Claudia module: move an optimisation opportunity through its lifecycle.
+export async function setOpportunityStatus(
+  id: string, status: 'suggested' | 'approved' | 'in_progress' | 'completed' | 'dismissed',
+): Promise<{ error?: string }> {
+  await requireAdmin();
+  const supabase = createClient();
+  const { error } = await supabase.from('claudia_optimisation_opportunities').update({ status }).eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath('/command-centre/agents/claudia-customer-service');
+  return {};
+}
+
 // Owner action on a risk.
 export async function updateRiskStatus(
   id: string, status: 'acknowledged' | 'resolved' | 'dismissed',
