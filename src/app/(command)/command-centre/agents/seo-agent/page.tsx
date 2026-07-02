@@ -55,7 +55,7 @@ export default async function SeoAgentModule() {
     agent ? sb.from('agent_tool_connections').select('*').eq('agent_id', agent.id).order('created_at') : Promise.resolve({ data: [] }),
     agent ? sb.from('owner_approvals').select('*').eq('agent_id', agent.id).eq('status', 'pending') : Promise.resolve({ data: [] }),
     agent ? sb.from('owner_risks').select('*').eq('agent_id', agent.id).in('status', ['open', 'acknowledged']) : Promise.resolve({ data: [] }),
-    agent ? sb.from('agent_updates').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(3) : Promise.resolve({ data: [] }),
+    agent ? sb.from('agent_updates').select('*').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(8) : Promise.resolve({ data: [] }),
   ]);
 
   const KW = (keywords ?? []) as any[];
@@ -226,6 +226,24 @@ export default async function SeoAgentModule() {
           <div className="card p-3"><div className="text-[11px] text-muted">Organic revenue (90d)</div><div className="text-xl font-semibold tabular-nums text-emerald-700">{P?.organic_revenue ? money(P.organic_revenue) : '—'}</div><div className="text-[11px] text-muted">GA4 — organic is the #1 channel</div></div>
           <div className="card p-3"><div className="text-[11px] text-muted">Visibility trend</div><div className="text-sm font-semibold mt-0.5">[DATA NEEDED]</div><div className="text-[11px] text-muted">populates from daily Semrush runs</div></div>
         </div>
+      </Section>
+
+      {/* Reports from the agent — the manager's inbox */}
+      <Section title="Reports From Your Agent">
+        {(updates ?? []).length === 0 ? <EmptyState>No reports yet — they file here automatically when work completes.</EmptyState> : (
+          <div className="space-y-2">
+            {(updates ?? []).map((u: any) => (
+              <details key={u.id} className="card p-4">
+                <summary className="cursor-pointer flex items-center gap-2 flex-wrap">
+                  <Pill tone={u.update_type === 'error' ? 'danger' : u.update_type === 'success' ? 'good' : 'info'}>{u.update_type === 'success' ? 'REPORT' : u.update_type}</Pill>
+                  <span className="text-sm font-medium">{u.title}</span>
+                  <span className="text-[11px] text-muted ml-auto">{new Date(u.created_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                </summary>
+                {u.summary && <pre className="text-xs text-ink/85 whitespace-pre-wrap mt-3 font-sans">{u.summary}</pre>}
+              </details>
+            ))}
+          </div>
+        )}
       </Section>
 
       {/* 2 — Command */}
