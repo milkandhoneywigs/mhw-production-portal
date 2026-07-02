@@ -8,6 +8,7 @@ import {
   statusTone, priorityTone, riskTone, agentStatusTone, money, STATUS_LABEL, MODULE_LABEL, APPROVAL_TYPE_LABEL,
   type Agent, type AgentCommand, type OwnerApproval, type OwnerRisk, type AgentUpdate, type BusinessTask, type FinancialSnapshot,
 } from '@/lib/command-centre/cc';
+import { getLiveOps } from '@/lib/command-centre/live';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,7 @@ export default async function OwnerDashboard() {
   const UP = (updates ?? []) as AgentUpdate[];
   const TK = (tasks ?? []) as BusinessTask[];
   const F = (snap ?? null) as FinancialSnapshot | null;
+  const ops = await getLiveOps(sb); // live from the production DB (orders + invoices)
   const agentName = (id: string | null) => A.find((a) => a.id === id)?.name ?? '—';
 
   const today = new Date().toISOString().slice(0, 10);
@@ -68,18 +70,18 @@ export default async function OwnerDashboard() {
       <PageHeader title={`Welcome back, ${(profile.full_name || 'Yasmin').split(' ')[0]}`}
         subtitle="Beyond Reason Command Centre — what needs you today." />
 
-      {/* Owner attention cards */}
+      {/* Owner attention cards — operational metrics are LIVE from the production DB */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8">
         <Metric label="Pending approvals" value={AP.length} tone={AP.length ? 'warn' : 'neutral'} href="/command-centre/approvals" />
-        <Metric label="High-risk issues" value={highRisk} tone={highRisk ? 'danger' : 'neutral'} href="/command-centre/risks" />
+        <Metric label="Overdue in production" value={ops.overdueCount} tone={ops.overdueCount ? 'danger' : 'neutral'} href="/production?bucket=overdue" />
+        <Metric label="High-risk orders" value={ops.highRiskCount} tone={ops.highRiskCount ? 'danger' : 'neutral'} href="/production?bucket=high_risk" />
+        <Metric label="Orders in production" value={ops.ordersInProduction} tone="honey" href="/production" />
+        <Metric label="Active orders" value={ops.totalActiveOrders} tone="neutral" href="/production" />
         <Metric label="Queued commands" value={queued} tone={queued ? 'honey' : 'neutral'} href="/command-centre/commands?status=queued" />
         <Metric label="Running commands" value={running} tone={running ? 'good' : 'neutral'} href="/command-centre/commands?status=running" />
-        <Metric label="Completed today" value={completedToday} tone="good" href="/command-centre/commands?status=completed" />
-        <Metric label="Failed commands" value={failed} tone={failed ? 'danger' : 'neutral'} href="/command-centre/commands?status=failed" />
-        <Metric label="Supplier payments due" value={money(F?.supplier_payments_due)} tone={F?.supplier_payments_due ? 'warn' : 'neutral'} href="/command-centre/financials" />
-        <Metric label="Balance payments due" value={money(F?.balance_payments_due)} tone={F?.balance_payments_due ? 'danger' : 'neutral'} href="/command-centre/financials" />
-        <Metric label="Orders blocked by payment" value={F?.orders_blocked_by_payment ?? 0} tone={(F?.orders_blocked_by_payment ?? 0) ? 'danger' : 'neutral'} href="/production" />
-        <Metric label="Month-to-date revenue" value={money(F?.month_revenue)} tone="honey" href="/command-centre/financials" />
+        <Metric label="Supplier payments due" value={money(ops.supplierPaymentsDue)} tone={ops.supplierPaymentsDue ? 'warn' : 'neutral'} href="/command-centre/financials" />
+        <Metric label="Balance payments due" value={money(ops.balancePaymentsDue)} tone={ops.balancePaymentsDue ? 'danger' : 'neutral'} href="/command-centre/financials" />
+        <Metric label="Revenue (last 7 days)" value={money(F?.week_revenue)} tone="honey" href="/command-centre/financials" />
       </div>
 
       {/* Today's owner priorities */}

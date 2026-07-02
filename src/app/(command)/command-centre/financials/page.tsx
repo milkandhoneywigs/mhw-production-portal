@@ -2,6 +2,7 @@ import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Section, EmptyState } from '@/components/ui';
 import { money, type FinancialSnapshot } from '@/lib/command-centre/cc';
+import { getLiveOps } from '@/lib/command-centre/live';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,55 +16,58 @@ function Fin({ label, value, tone = 'neutral' }: { label: string; value: string;
   );
 }
 
-const INTEGRATIONS = ['Shopify', 'Xero', 'PayPal', 'Bank feed', 'Gorgias', 'Google Ads', 'Meta Ads', 'Klaviyo', 'Omnisend'];
+const INTEGRATIONS = ['Shopify', 'Fresha (in-store)', 'Xero', 'PayPal', 'Bank feed', 'Gorgias', 'Google Ads', 'Meta Ads', 'Klaviyo', 'Omnisend'];
 
 export default async function FinancialsPage() {
   await requireAdmin();
   const sb = createClient();
   const { data } = await sb.from('financial_snapshots').select('*').order('snapshot_date', { ascending: false }).limit(1).maybeSingle();
   const F = (data ?? null) as FinancialSnapshot | null;
-
-  if (!F) return (<><PageHeader title="Financials" /><EmptyState>No financial snapshot yet.</EmptyState></>);
+  const ops = await getLiveOps(sb); // supplier liabilities + production, live from the DB
 
   return (
     <>
-      <PageHeader title="Financials" subtitle={`Owner financial dashboard · snapshot ${F.snapshot_date}`} />
-      <div className="card p-3 mb-6 ring-1 ring-amber-200 bg-amber-50 text-xs text-amber-800">
-        DEMO / placeholder values. External finance systems (Shopify, Xero, PayPal, bank) are not connected yet and no payments are processed here.
+      <PageHeader title="Financials" subtitle="Owner financial dashboard" />
+      <div className="card p-3 mb-6 ring-1 ring-beige bg-cream text-xs text-ink/80">
+        <b>Revenue</b> = live from GA4 (website). <b>Supplier liabilities &amp; production</b> = live from the production DB.
+        {F?.notes ? ` ${F.notes}` : ''} Shopify/Xero/PayPal/bank not yet connected; no payments are processed here.
       </div>
 
-      <Section title="Revenue Overview">
+      <Section title="Revenue Overview (GA4 · website)">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Fin label="Today's revenue" value={money(F.today_revenue)} />
-          <Fin label="This week" value={money(F.week_revenue)} />
-          <Fin label="This month" value={money(F.month_revenue)} tone="honey" />
-          <Fin label="Average order value" value="—" />
-          <Fin label="Online revenue" value={money(F.online_revenue)} />
-          <Fin label="In-store revenue" value={money(F.instore_revenue)} />
-          <Fin label="Outlet revenue" value={money(F.outlet_revenue)} />
-          <Fin label="Refunds" value={money(F.refunds)} tone="warn" />
-          <Fin label="Net sales" value={money(F.net_sales)} tone="good" />
+          <Fin label="Today's revenue" value={money(F?.today_revenue)} />
+          <Fin label="Last 7 days" value={money(F?.week_revenue)} tone="good" />
+          <Fin label="Month to date" value={money(F?.month_revenue)} tone="honey" />
+          <Fin label="Online revenue (MTD)" value={money(F?.online_revenue)} />
+          <Fin label="In-store revenue" value="—" />
+          <Fin label="Outlet revenue" value="—" />
+          <Fin label="Refunds" value={money(F?.refunds)} tone="warn" />
+          <Fin label="Net sales (MTD)" value={money(F?.net_sales)} tone="good" />
         </div>
+        <p className="text-xs text-muted mt-2">In-store revenue will come from <b>Fresha</b> (all in-store bookings &amp; sales); Outlet via its own Shopify. Not in this GA4 property yet.</p>
       </Section>
 
-      <Section title="Production / Supplier Liabilities">
+      <Section title="Production / Supplier Liabilities (live from production DB)">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Fin label="Supplier payments required" value={money(F.supplier_payments_due)} tone="warn" />
-          <Fin label="Balance payments required" value={money(F.balance_payments_due)} tone="danger" />
-          <Fin label="Unpaid supplier invoices" value={money(F.unpaid_supplier_invoices)} tone="warn" />
-          <Fin label="Orders blocked by payment" value={String(F.orders_blocked_by_payment)} tone={F.orders_blocked_by_payment ? 'danger' : 'neutral'} />
-          <Fin label="Est. production spend (month)" value={money(F.estimated_production_spend_month)} />
-          <Fin label="Paid supplier invoices (month)" value={money(F.paid_supplier_invoices_month)} tone="good" />
+          <Fin label="Supplier payments required" value={money(ops.supplierPaymentsDue)} tone={ops.supplierPaymentsDue ? 'warn' : 'neutral'} />
+          <Fin label="Balance payments required" value={money(ops.balancePaymentsDue)} tone={ops.balancePaymentsDue ? 'danger' : 'neutral'} />
+          <Fin label="Unpaid supplier invoices" value={money(ops.unpaidSupplierInvoices)} tone={ops.unpaidSupplierInvoices ? 'warn' : 'neutral'} />
+          <Fin label="Orders blocked by payment" value={String(ops.ordersBlockedByPayment)} tone={ops.ordersBlockedByPayment ? 'danger' : 'neutral'} />
+          <Fin label="Orders in production" value={String(ops.ordersInProduction)} tone="honey" />
+          <Fin label="Overdue in production" value={String(ops.overdueCount)} tone={ops.overdueCount ? 'danger' : 'neutral'} />
+          <Fin label="High-value orders in production" value={String(ops.highValueCount)} />
+          <Fin label="Paid supplier invoices (month)" value={money(ops.paidSupplierInvoicesMonth)} tone="good" />
         </div>
+        {ops.invoiceCount === 0 && <p className="text-xs text-muted mt-2">No supplier invoices in the portal yet (suppliers price orders via the production portal → invoices appear here automatically).</p>}
       </Section>
 
       <Section title="Cashflow Watch">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <Fin label="Upcoming supplier payments" value={money(F.supplier_payments_due)} tone="warn" />
-          <Fin label="Balance held (blocked orders)" value={money(F.balance_payments_due)} tone="danger" />
-          <Fin label="Customer refunds pending" value={money(F.refunds)} tone="warn" />
+          <Fin label="Upcoming supplier payments" value={money(ops.supplierPaymentsDue)} tone={ops.supplierPaymentsDue ? 'warn' : 'neutral'} />
+          <Fin label="Balance held (blocked orders)" value={money(ops.balancePaymentsDue)} tone={ops.balancePaymentsDue ? 'danger' : 'neutral'} />
+          <Fin label="Customer refunds pending" value={money(F?.refunds)} tone="warn" />
         </div>
-        <p className="text-xs text-muted mt-2">Orders paid by customer but not yet sent to supplier, complaint/refund risk, and large upcoming expenses will populate here once live data connects.</p>
+        <p className="text-xs text-muted mt-2">Orders paid by customer but not yet sent to supplier, complaint/refund risk, and large upcoming expenses will populate here once Shopify/Xero connect.</p>
       </Section>
 
       <Section title="Future integrations (planned)">
