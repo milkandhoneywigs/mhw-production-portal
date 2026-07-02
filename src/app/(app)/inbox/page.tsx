@@ -2,8 +2,13 @@ import Link from 'next/link';
 import { requireStaff } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader, EmptyState } from '@/components/ui';
+import { stageOf, type OrderStatus } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
+
+// Once an order has shipped (In Transit or Complete) its thread is archived and
+// drops out of the main inbox, which stays focused on open/outstanding orders.
+const SHIPPED_STAGES = new Set(['in_transit', 'complete']);
 
 interface MsgRow {
   order_id: string;
@@ -11,17 +16,18 @@ interface MsgRow {
   sender_name: string | null;
   body: string;
   created_at: string;
-  order: { order_number: string | null; customer: { full_name: string | null } | null } | null;
+  order: { order_number: string | null; status: OrderStatus; customer: { full_name: string | null } | null } | null;
 }
 
 // One row per order that has messages: order #, customer, last message + unread flag.
-export default async function InboxPage({ searchParams }: { searchParams: { q?: string } }) {
+export default async function InboxPage({ searchParams }: { searchParams: { q?: string; archived?: string } }) {
   const profile = await requireStaff();
   const supabase = createClient();
+  const showArchived = searchParams.archived === '1';
 
   const { data } = await supabase
     .from('order_messages')
-    .select('order_id, sender_role, sender_name, body, created_at, order:orders(order_number, customer:customers(full_name))')
+    .select('order_id, sender_role, sender_name, body, created_at, order:orders(order_number, status, customer:customers(full_name))')
     .order('created_at', { ascending: false });
   const rows = (data ?? []) as unknown as MsgRow[];
 
@@ -45,7 +51,13 @@ export default async function InboxPage({ searchParams }: { searchParams: { q?: 
     last_time: latest.created_at,
     count,
     unread: !!latest.sender_role && otherRoles.includes(latest.sender_role),
+    archived: latest.order ? SHIPPED_STAGES.has(stageOf(latest.order.status)) : false,
   }));
+
+  const archivedCount = threads.filter((t) => t.archived).length;
+  const openCount = threads.length - archivedCount;
+  // Main inbox = open/outstanding only; archived view = shipped/complete.
+  threads = threads.filter((t) => t.archived === showArchived);
 
   // Search by order number or customer name.
   const q = (searchParams.q || '').trim().toLowerCase();
@@ -64,12 +76,19 @@ export default async function InboxPage({ searchParams }: { searchParams: { q?: 
     <>
       <PageHeader
         title="Messages"
-        subtitle={`${threads.length} conversation(s)${unreadCount ? ` · ${unreadCount} awaiting reply` : ''}`}
+        subtitle={showArchived
+          ? `Archived (shipped) — ${threads.length} conversation(s)`
+          : `Open orders — ${threads.length} conversation(s)${unreadCount ? ` · ${unreadCount} awaiting reply` : ''}`}
         action={
-          <form method="get" className="flex items-center gap-2">
-            <input name="q" defaultValue={searchParams.q ?? ''} placeholder="Search order # or customer…" className="input w-64" />
-            <button type="submit" className="btn-secondary">Search</button>
-          </form>
+          <div className="flex items-center gap-2">
+            <Link href="/inbox" className={showArchived ? 'btn-secondary' : 'btn-primary'}>Open ({openCount})</Link>
+            <Link href="/inbox?archived=1" className={showArchived ? 'btn-primary' : 'btn-secondary'}>Archived ({archivedCount})</Link>
+            <form method="get" className="flex items-center gap-2">
+              {showArchived && <input type="hidden" name="archived" value="1" />}
+              <input name="q" defaultValue={searchParams.q ?? ''} placeholder="Search order # or customer…" className="input w-56" />
+              <button type="submit" className="btn-secondary">Search</button>
+            </form>
+          </div>
         }
       />
 

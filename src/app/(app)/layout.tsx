@@ -2,6 +2,10 @@ import Link from 'next/link';
 import { requireProfile } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { Nav } from '@/components/Nav';
+import { stageOf, type OrderStatus } from '@/lib/constants';
+
+// Shipped/complete threads are archived and don't drive the bell.
+const SHIPPED_STAGES = new Set(['in_transit', 'complete']);
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const profile = await requireProfile();
@@ -12,14 +16,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = createClient();
   const { data: msgs } = await supabase
     .from('order_messages')
-    .select('order_id, sender_role, created_at')
+    .select('order_id, sender_role, created_at, order:orders(status)')
     .order('created_at', { ascending: false });
   const otherRoles = profile.role === 'supplier' ? ['staff', 'admin'] : ['supplier'];
   const seen = new Set<string>();
   let notif = 0;
-  for (const m of (msgs ?? []) as { order_id: string; sender_role: string | null }[]) {
+  for (const m of (msgs ?? []) as unknown as { order_id: string; sender_role: string | null; order: { status: OrderStatus } | null }[]) {
     if (seen.has(m.order_id)) continue;
     seen.add(m.order_id);
+    // Only count open/outstanding orders — shipped threads are archived.
+    if (m.order && SHIPPED_STAGES.has(stageOf(m.order.status))) continue;
     if (m.sender_role && otherRoles.includes(m.sender_role)) notif++;
   }
   const bellHref = profile.role === 'supplier' ? '/supplier' : '/inbox';
