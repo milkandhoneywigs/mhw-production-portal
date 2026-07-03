@@ -130,7 +130,18 @@ export default async function AgentDetail({ params }: { params: { slug: string }
                 {PL.objective && <p className="text-sm mt-2"><span className="text-muted">Objective:</span> {PL.objective}</p>}
                 {PL.current_focus && <p className="text-sm mt-1"><span className="text-muted">Focus:</span> {PL.current_focus}</p>}
                 {Array.isArray(PL.next_actions) && PL.next_actions.length > 0 && (
-                  <ul className="text-sm mt-2 list-disc pl-5">{PL.next_actions.map((x, i) => <li key={i}>{x}</li>)}</ul>
+                  <ul className="text-sm mt-2 space-y-1">
+                    {PL.next_actions.map((x: any, i: number) => {
+                      const text = typeof x === 'string' ? x : x?.text ?? '';
+                      const status = typeof x === 'string' ? 'todo' : x?.status ?? 'todo';
+                      return (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className={`mt-1 w-3 h-3 rounded-full shrink-0 grid place-items-center text-[8px] ${status === 'done' ? 'bg-emerald-500 text-white' : status === 'in_progress' ? 'bg-honey text-white' : 'bg-beige'}`}>{status === 'done' ? '✓' : status === 'in_progress' ? '›' : ''}</span>
+                          <span className={status === 'done' ? 'line-through text-muted' : status === 'in_progress' ? 'font-medium' : ''}>{text}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
             </Section>
