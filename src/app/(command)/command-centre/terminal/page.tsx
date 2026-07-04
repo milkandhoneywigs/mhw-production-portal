@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Section, EmptyState } from '@/components/ui';
 import { CommandComposer } from '@/components/command/CommandComposer';
 import { CCBadge } from '@/components/command/CCBadge';
+import { AgentReport } from '@/components/command/AgentReport';
 import { statusTone, STATUS_LABEL, type Agent, type AgentCommand } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,7 @@ export default async function TerminalPage() {
                 {R.map((r) => (
                   <Link key={r.id} href={`/command-centre/commands/${r.command_id}`} className="card p-4 block hover:shadow-md transition">
                     <div className="flex items-center gap-2 mb-1"><CCBadge tone="info">{r.result_type}</CCBadge><span className="text-sm font-medium">{r.title ?? 'Result'}</span></div>
-                    <pre className="text-xs text-ink/80 whitespace-pre-wrap font-mono line-clamp-4">{r.content}</pre>
+                    <div className="line-clamp-4 text-xs"><AgentReport text={(r.content ?? '').slice(0, 400)} /></div>
                   </Link>
                 ))}
               </div>

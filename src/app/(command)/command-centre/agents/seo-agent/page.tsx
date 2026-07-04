@@ -7,6 +7,7 @@ import { CommandComposer } from '@/components/command/CommandComposer';
 import { ApprovalActions, RiskActions } from '@/components/command/ActionButtons';
 import { ItemApproval } from '@/components/command/ItemApproval';
 import { CompletedWork, type DoneItem } from '@/components/command/CompletedWork';
+import { AgentReport } from '@/components/command/AgentReport';
 import { priorityTone, riskTone, money, type Agent, type OwnerApproval, type OwnerRisk } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -239,7 +240,7 @@ export default async function SeoAgentModule() {
                   <span className="text-sm font-medium">{u.title}</span>
                   <span className="text-[11px] text-muted ml-auto">{new Date(u.created_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                 </summary>
-                {u.summary && <pre className="text-xs text-ink/85 whitespace-pre-wrap mt-3 font-sans">{u.summary}</pre>}
+                {u.summary && <div className="mt-3 border-t border-beige pt-3"><AgentReport text={u.summary} /></div>}
               </details>
             ))}
           </div>

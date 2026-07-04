@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Section, EmptyState } from '@/components/ui';
 import { CCBadge } from '@/components/command/CCBadge';
 import { DemoCompleteButton } from '@/components/command/ActionButtons';
+import { AgentReport } from '@/components/command/AgentReport';
 import { statusTone, priorityTone, STATUS_LABEL, type AgentCommand, type Agent } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -68,7 +69,7 @@ export default async function CommandDetail({ params }: { params: { id: string }
             {RS.length === 0 ? <p className="text-sm text-muted">No results yet.</p> : RS.map((r) => (
               <div key={r.id} className="mb-3 last:mb-0">
                 <div className="flex items-center gap-2 mb-1"><CCBadge tone="info">{r.result_type}</CCBadge><span className="text-sm font-medium">{r.title ?? 'Result'}</span></div>
-                {r.content && <pre className="text-xs whitespace-pre-wrap font-mono text-ink/80">{r.content}</pre>}
+                {r.content && <AgentReport text={r.content} />}
                 {r.file_url && <a href={r.file_url} className="text-xs text-honey hover:underline">Open file →</a>}
               </div>
             ))}

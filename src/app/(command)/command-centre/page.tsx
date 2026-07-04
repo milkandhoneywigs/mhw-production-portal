@@ -13,6 +13,7 @@ import { getRevenueAnalytics } from '@/lib/command-centre/series';
 import { TrendCard, TrendBadge } from '@/components/command/TrendCard';
 import { Sparkline } from '@/components/command/Charts';
 import { IdeaBox } from '@/components/command/IdeaBox';
+import { AgentReport } from '@/components/command/AgentReport';
 
 export const dynamic = 'force-dynamic';
 
@@ -260,7 +261,7 @@ export default async function OwnerDashboard() {
                     <span className="text-[11px] text-muted ml-auto">{new Date(c.created_at).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                   </summary>
                   {plan
-                    ? <pre className="text-xs text-ink/85 whitespace-pre-wrap mt-3 font-sans">{plan}</pre>
+                    ? <div className="mt-3 border-t border-beige pt-3"><AgentReport text={plan} /></div>
                     : <p className="text-xs text-muted mt-3">{c.status === 'completed' ? c.result_summary : 'The Chief of Staff is drafting — refresh in a couple of minutes. Agent tasks are seeded automatically when the plan lands.'}</p>}
                   {c.status === 'completed' && <Link href={`/command-centre/commands/${c.id}`} className="text-xs text-honey hover:underline mt-2 inline-block">Open full record →</Link>}
                 </details>
