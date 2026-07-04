@@ -284,3 +284,36 @@ export async function updateRiskStatus(
   revalidatePath('/command-centre');
   return {};
 }
+
+// Reply in a command thread: the owner continues working with the agent on the
+// same project. The message is threaded and the command re-queues; the runner
+// resumes the agent's original Claude session (runner_session_id) so it answers
+// with full project context — no new command needed.
+export async function replyToCommand(commandId: string, message: string): Promise<{ error?: string }> {
+  const profile = await requireAdmin();
+  const supabase = createClient();
+  const text = (message ?? '').trim();
+  if (!text) return { error: 'Write a reply first.' };
+
+  const { data: cmd } = await supabase.from('agent_commands')
+    .select('id,status').eq('id', commandId).single();
+  if (!cmd) return { error: 'Command not found.' };
+  if (['queued', 'claimed', 'running'].includes(cmd.status)) {
+    return { error: 'The agent is already working — your reply will be picked up when you send it after this run completes.' };
+  }
+
+  const { error: msgErr } = await supabase.from('agent_command_messages').insert({
+    command_id: commandId, sender_type: 'owner', message: text,
+  });
+  if (msgErr) return { error: msgErr.message };
+
+  const { error: reqErr } = await supabase.from('agent_commands').update({
+    status: 'queued', claimed_by_worker: null, claimed_at: null, started_at: null, error_message: null,
+  }).eq('id', commandId);
+  if (reqErr) return { error: reqErr.message };
+
+  await logAudit({ actorId: profile.id, action: 'command.reply', entityType: 'agent_command', entityId: commandId });
+  revalidatePath(`/command-centre/commands/${commandId}`);
+  revalidatePath('/command-centre/commands');
+  return {};
+}

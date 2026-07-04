@@ -6,6 +6,7 @@ import { PageHeader, Section, EmptyState } from '@/components/ui';
 import { CCBadge } from '@/components/command/CCBadge';
 import { DemoCompleteButton } from '@/components/command/ActionButtons';
 import { AgentReport } from '@/components/command/AgentReport';
+import { CommandReply } from '@/components/command/CommandReply';
 import { statusTone, priorityTone, STATUS_LABEL, type AgentCommand, type Agent } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -76,14 +77,21 @@ export default async function CommandDetail({ params }: { params: { id: string }
           </div>
 
           <div className="card p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Message thread</h2>
-            {M.length === 0 ? <p className="text-sm text-muted">No messages.</p> : (
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mb-3">Project thread</h2>
+            {M.length === 0 ? <p className="text-sm text-muted">No messages yet.</p> : (
               <div className="space-y-2">
                 {M.map((m) => (
-                  <div key={m.id} className="text-sm"><CCBadge tone={m.sender_type === 'owner' ? 'honey' : m.sender_type === 'agent' ? 'info' : 'neutral'}>{m.sender_type}</CCBadge> <span className="ml-2">{m.message}</span></div>
+                  <div key={m.id} className={`text-sm rounded-lg p-2.5 ${m.sender_type === 'owner' ? 'bg-honey/10' : 'bg-sand/50'}`}>
+                    <CCBadge tone={m.sender_type === 'owner' ? 'honey' : m.sender_type === 'agent' ? 'info' : 'neutral'}>{m.sender_type === 'owner' ? 'you' : m.sender_type}</CCBadge>
+                    <span className="ml-2 whitespace-pre-wrap">{m.message}</span>
+                    <span className="block text-[10px] text-muted mt-1">{dt(m.created_at)}</span>
+                  </div>
                 ))}
               </div>
             )}
+            {/* Continue the project in-thread: reply re-queues the command and the
+                runner resumes the agent's original session with full context. */}
+            <CommandReply commandId={c.id} status={c.status} />
           </div>
 
           <div className="card p-5">
