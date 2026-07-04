@@ -87,6 +87,10 @@ export default async function ClaudiaModule() {
         <Pill tone="good">{agent?.status ?? 'active'}</Pill>
         <Pill tone="warn">HUMAN REVIEW</Pill>
         <Pill tone="danger">AUTO-SEND DISABLED</Pill>
+        <a href="https://mhwigs.gorgias.com" target="_blank" rel="noopener noreferrer"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-ink text-cream text-xs font-medium px-3 py-1.5 hover:bg-ink/85 transition">
+          Open Gorgias ↗
+        </a>
       </div>
       <p className="text-sm text-muted mb-6">
         Claudia drafts customer replies as internal Gorgias notes for human approval. She signs as Claudia, checks live
