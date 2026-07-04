@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   let query = supabase
     .from('orders')
     .select(
-      'order_number, status, order_type, customer_facing_product_name, date_ordered, expected_completion_date, production_complete_at, customer:customers(full_name, email)',
+      'order_number, status, order_type, customer_facing_product_name, date_ordered, expected_completion_date, production_complete_at, customer:customers(full_name, email), tracking(tracking_type, carrier, tracking_number, tracking_url, created_at)',
     )
     .order('created_at', { ascending: false })
     .limit(20);
@@ -62,6 +62,17 @@ export async function GET(req: NextRequest) {
       date_ordered: o.date_ordered ?? null,
       estimated_completion: eta,
       overdue,
+      // Customer-facing tracking only (never supplier→showroom legs): lets
+      // Claudia answer shipped-order WISMO with the number + link instead of
+      // escalating. Carrier/number/url are already customer-safe by nature.
+      tracking: (o.tracking ?? [])
+        .filter((t: any) => t.tracking_type !== 'supplier_to_showroom' && t.tracking_number)
+        .map((t: any) => ({
+          carrier: t.carrier ?? null,
+          tracking_number: t.tracking_number,
+          tracking_url: t.tracking_url ?? null,
+          uploaded_at: t.created_at,
+        })),
     };
   });
 
