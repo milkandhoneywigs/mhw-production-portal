@@ -200,6 +200,7 @@ const APPROVABLE: Record<string, { column: string; approve: string; reject: stri
   mkt_campaign_calendar: { column: 'status', approve: 'approved', reject: 'cancelled' },
   mkt_growth_experiments: { column: 'status', approve: 'approved', reject: 'dismissed' },
   mkt_budget_recommendations: { column: 'status', approve: 'approved', reject: 'dismissed' },
+  design_deliverables: { column: 'status', approve: 'approved', reject: 'archived' },
 };
 
 export async function decideModuleItem(
@@ -219,7 +220,8 @@ export async function decideModuleItem(
   // IMMEDIATE EXECUTION: approving queues an implement-command for the owning
   // agent; the Mac Studio runner picks it up within ~15s (no waiting for the
   // daily run). One open implement-command per agent — approvals batch into it.
-  if (decision === 'approve') {
+  // Design approvals mark a deliverable ready for use — no implement-run needed.
+  if (decision === 'approve' && !table.startsWith('design_')) {
     const slug = table.startsWith('claudia_') ? 'claudia-customer-service'
       : table.startsWith('mkt_') ? 'marketing-agent' : 'seo-agent';
     const { data: agent } = await supabase.from('agents').select('id').eq('slug', slug).maybeSingle();

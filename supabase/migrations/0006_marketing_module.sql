@@ -198,3 +198,19 @@ begin
     execute format('create policy %1$s_admin_all on %1$s for all using (is_admin()) with check (is_admin())', t);
   end loop;
 end $$;
+create table if not exists design_deliverables (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  kind text not null default 'component' check (kind in ('tokens','component','email','banner','page','other')),
+  description text,
+  html text not null,
+  status text not null default 'review' check (status in ('review','approved','in_use','archived')),
+  decision_note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+drop trigger if exists trg_design_deliverables_updated on design_deliverables;
+create trigger trg_design_deliverables_updated before update on design_deliverables for each row execute function cc_touch_updated_at();
+alter table design_deliverables enable row level security;
+drop policy if exists design_deliverables_admin_all on design_deliverables;
+create policy design_deliverables_admin_all on design_deliverables for all using (is_admin()) with check (is_admin());
