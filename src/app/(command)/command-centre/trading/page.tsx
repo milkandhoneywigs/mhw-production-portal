@@ -75,10 +75,16 @@ export default async function TradingPage() {
                 <div key={s.id} className={`card p-4 ${fresh ? 'ring-1 ring-honey/60' : ''}`}>
                   <div className="flex items-center gap-2 flex-wrap">
                     {fresh && <span className="w-2 h-2 rounded-full bg-honey animate-pulse" />}
-                    <span className="text-base font-semibold">{s.symbol ?? `${s.mint?.slice(0, 8)}…`}</span>
+                    {/* Coin name IS the click-through; explicit button as backup. URL derived
+                        from mint whenever the bot doesn't send pumpfun_url. */}
+                    <a href={s.pumpfun_url || `https://pump.fun/coin/${s.mint}`} target="_blank" rel="noopener noreferrer"
+                      className="text-base font-semibold hover:text-honey hover:underline">
+                      {s.symbol ?? `${s.mint?.slice(0, 8)}…`}
+                    </a>
                     <CCBadge tone="honey">SCORE {s.score ?? 5}</CCBadge>
                     <span className="text-xs text-muted">flagged @ {s.age_at_flag_s != null ? `${Math.round(s.age_at_flag_s)}s` : '—'} · entry {kUsd(s.entry_mcap_usd)} ({sol(s.entry_mcap_sol)})</span>
-                    {s.pumpfun_url && <a href={s.pumpfun_url} target="_blank" rel="noopener noreferrer" className="text-xs text-honey hover:underline">pump.fun ↗</a>}
+                    <a href={s.pumpfun_url || `https://pump.fun/coin/${s.mint}`} target="_blank" rel="noopener noreferrer"
+                      className="text-xs rounded-full bg-ink text-cream px-2.5 py-1 hover:bg-ink/85">pump.fun ↗</a>
                     <span className="text-[11px] text-muted ml-auto">{ago(s.created_at)}</span>
                   </div>
                   <div className="flex gap-1.5 flex-wrap mt-2 text-[11px]">
