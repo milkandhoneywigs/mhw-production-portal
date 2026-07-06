@@ -146,22 +146,31 @@ export default async function MarketingAgentModule({ searchParams }: { searchPar
           <Link href="?range=30d" className={`rounded-full px-3 py-1.5 ring-1 ${range === 'last_30_days' ? 'bg-ink text-cream ring-ink' : 'bg-white ring-beige hover:bg-sand'}`}>Last 30 days</Link>
         </div>
       }>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="card p-3">
             <div className="text-[11px] text-muted">Total AU ad spend ({range === 'last_7_days' ? '7d' : '30d'})</div>
             <div className="text-xl font-semibold tabular-nums">{money(B?.total_ad_spend)}</div>
             <div className="text-[10px] text-muted">Google {money(B?.google_spend)} + Meta {money(B?.meta_spend)}</div>
           </div>
           <div className="card p-3">
-            <div className="text-[11px] text-muted">Blended MER ({range === 'last_7_days' ? '7d' : '30d'})</div>
+            <div className="text-[11px] text-muted">TRUE Blended MER ({range === 'last_7_days' ? '7d' : '30d'})</div>
             <div className={`text-xl font-semibold tabular-nums ${B?.mer && Number(B.mer) < 4 ? 'text-red-600' : 'text-emerald-700'}`}>{B?.mer ? `${Number(B.mer).toFixed(1)}×` : '—'}</div>
-            <div className="text-[10px] text-muted">{B?.mer ? `ad spend = ${(100 / Number(B.mer)).toFixed(1)}% of revenue` : ''} · rev {money(B?.blended_revenue)} ÷ spend {money(B?.total_ad_spend)}</div>
+            <div className="text-[10px] text-muted">
+              {B?.outlet_revenue != null
+                ? <>PREMIUM {money(B?.premium_revenue)} + OUTLET {money(B?.outlet_revenue)} ÷ spend {money(B?.total_ad_spend)}</>
+                : <>rev {money(B?.blended_revenue)} ÷ spend {money(B?.total_ad_spend)} · <span className="text-amber-700">outlet revenue pending first sync</span></>}
+            </div>
+          </div>
+          <div className="card p-3">
+            <div className="text-[11px] text-muted">OUTLET revenue ({range === 'last_7_days' ? '7d' : '30d'})</div>
+            <div className="text-xl font-semibold tabular-nums">{B?.outlet_revenue != null ? money(B.outlet_revenue) : '—'}</div>
+            <div className="text-[10px] text-muted">{B?.outlet_revenue != null ? `${B?.outlet_orders ?? '—'} orders · from outlet Shopify (real)` : 'awaiting outlet orders scope + first agent sync'}</div>
           </div>
           <div className="card p-3"><div className="text-[11px] text-muted">Google ROAS ({range === 'last_7_days' ? '7d' : '30d'})</div><div className="text-xl font-semibold tabular-nums">{B?.google_roas ? `${Number(B.google_roas).toFixed(1)}×` : '—'}</div><div className="text-[10px] text-muted">{B?.attributed_revenue ? `platform-attributed ${money(B.attributed_revenue)}` : 'platform-attributed [DATA NEEDED this window]'}</div></div>
           <div className="card p-3"><div className="text-[11px] text-muted">Meta ROAS</div><div className="text-xl font-semibold tabular-nums text-muted">[DATA NEEDED]</div><div className="text-[10px] text-muted">purchase-value field unmapped; purchases tracked</div></div>
           <div className="card p-3"><div className="text-[11px] text-muted">International ad spend</div><div className="text-xl font-semibold tabular-nums text-emerald-700">$33/day</div><div className="text-[10px] text-muted">NZ Phase 1 LIVE 4 Jul (PMax $25 + Brand $8)</div></div>
         </div>
-        <p className="text-[11px] text-muted mt-2">MER = website revenue (GA4) ÷ total ad spend (Google + Meta, both real). In-store Fresha revenue will lift MER when connected; Meta purchase value adds Meta ROAS. Refreshed daily by the 6am sync.</p>
+        <p className="text-[11px] text-muted mt-2">TRUE MER = (premium GA4 revenue + outlet Shopify revenue) ÷ total ad spend (Google + Meta, both real). In-store Fresha revenue will lift MER when connected; Meta purchase value adds Meta ROAS. Refreshed daily by the 6am sync.</p>
       </Section>
 
       {/* Reports from the agent — the manager's inbox */}
