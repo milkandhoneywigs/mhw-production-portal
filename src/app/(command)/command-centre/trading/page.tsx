@@ -2,114 +2,114 @@ import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Section, EmptyState } from '@/components/ui';
 import { CCBadge } from '@/components/command/CCBadge';
-import { AutoRefresh } from '@/components/command/AutoRefresh';
+import { TradingLive } from '@/components/command/TradingLive';
 
 export const dynamic = 'force-dynamic';
 
 // -----------------------------------------------------------------------------
-// TRADING — live ledger of trades the owner's bot terminal chooses to share.
-// Completely separate from all business modules: display-only, no actions,
-// nothing here can touch bots or funds. Auto-refreshes for live feel.
+// TRADING — the score-5 live board. Data contract owned by the owner's bot:
+// score5_signals (realtime inserts) → score5_outcomes (counterfactuals) →
+// manual_trades (wallet-watch fills). Display-only; firewalled from business.
 // -----------------------------------------------------------------------------
 
-const money = (v: number | null) =>
-  v == null ? '—' : `${v < 0 ? '-' : ''}$${Math.abs(Number(v)).toLocaleString('en-AU', { maximumFractionDigits: 2 })}`;
-const dt = (v: string) => new Date(v).toLocaleString('en-AU', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-const ago = (v: string) => {
-  const m = Math.round((Date.now() - new Date(v).getTime()) / 60000);
-  return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : `${Math.floor(m / 60)}h ${m % 60}m ago`;
+const n = (v: any) => (v == null ? null : Number(v));
+const kUsd = (v: any) => (v == null ? '—' : `$${Number(v) >= 1000 ? `${(Number(v) / 1000).toFixed(1)}k` : Number(v).toFixed(0)}`);
+const sol = (v: any) => (v == null ? '—' : `${Number(v).toFixed(2)} ◎`);
+const mult = (peak: any, entry: any) => (peak == null || !entry ? null : Number(peak) / Number(entry));
+const fmtX = (m: number | null) => (m == null ? '—' : `${m >= 10 ? m.toFixed(0) : m.toFixed(1)}x`);
+const ago = (v: string | null) => {
+  if (!v) return '';
+  const s = Math.round((Date.now() - new Date(v).getTime()) / 1000);
+  if (s < 90) return `${s}s ago`;
+  const m = Math.round(s / 60);
+  return m < 60 ? `${m}m ago` : `${Math.floor(m / 60)}h ${m % 60}m ago`;
 };
 
-export default async function TradingPage({ searchParams }: { searchParams: { bot?: string } }) {
+export default async function TradingPage() {
   await requireAdmin();
   const sb = createClient();
-
-  let q = sb.from('trading_ledger').select('*').order('occurred_at', { ascending: false }).limit(100);
-  if (searchParams.bot) q = q.eq('bot', searchParams.bot);
-  const [{ data: events }, { data: allBots }] = await Promise.all([
-    q,
-    sb.from('trading_ledger').select('bot').order('bot'),
+  const [{ data: signals }, { data: outcomes }, { data: trades }] = await Promise.all([
+    sb.from('score5_signals').select('*').order('created_at', { ascending: false }).limit(60),
+    sb.from('score5_outcomes').select('*'),
+    sb.from('manual_trades').select('*').order('entry_ts', { ascending: false }),
   ]);
-  const E = (events ?? []) as any[];
-  const bots = Array.from(new Set((allBots ?? []).map((b: any) => b.bot)));
+  const S = (signals ?? []) as any[];
+  const O = new Map(((outcomes ?? []) as any[]).map((o) => [o.signal_id, o]));
+  const T = (trades ?? []) as any[];
+  const tFor = (sid: string, mint: string) => T.find((t) => t.signal_id === sid || (t.mint && t.mint === mint));
 
-  const open = E.filter((e) => e.status === 'open' && e.event_type !== 'note');
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const closedToday = E.filter((e) => e.status === 'closed' && new Date(e.occurred_at) >= today);
-  const pnlToday = closedToday.reduce((s, e) => s + Number(e.pnl_usd ?? 0), 0);
-  const pnlAll = E.filter((e) => e.pnl_usd != null).reduce((s, e) => s + Number(e.pnl_usd), 0);
-  const last = E[0];
+  const todaySignals = S.filter((s) => new Date(s.created_at) >= today);
+  const withOutcome = S.map((s) => O.get(s.id)).filter(Boolean) as any[];
+  const monsters = withOutcome.filter((o) => Number(o.ath_multiple ?? 0) >= 10).length;
+  const died = withOutcome.filter((o) => o.died).length;
+  const openTrades = T.filter((t) => t.status === 'open');
+  const pnlSol = T.reduce((s, t) => s + Number(t.pnl_sol ?? 0), 0);
 
   return (
     <>
-      <AutoRefresh seconds={15} />
-      <PageHeader title="Trading — Live Ledger"
-        subtitle="Trades your bot terminal chooses to share, as they happen. Display-only — nothing here touches the bots." />
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="card p-4"><div className="text-2xl font-semibold tabular-nums">{open.length}</div><div className="text-sm text-muted">Open shared positions</div></div>
-        <div className="card p-4"><div className={`text-2xl font-semibold tabular-nums ${pnlToday > 0 ? 'text-emerald-700' : pnlToday < 0 ? 'text-red-600' : ''}`}>{money(pnlToday)}</div><div className="text-sm text-muted">Realised P&L today ({closedToday.length} closes)</div></div>
-        <div className="card p-4"><div className={`text-2xl font-semibold tabular-nums ${pnlAll > 0 ? 'text-emerald-700' : pnlAll < 0 ? 'text-red-600' : ''}`}>{money(pnlAll)}</div><div className="text-sm text-muted">Realised P&L (last 100 events)</div></div>
-        <div className="card p-4"><div className="text-sm font-semibold mt-1">{last ? ago(last.occurred_at) : 'no events yet'}</div><div className="text-sm text-muted">Last event · refreshes every 15s</div></div>
+      <div className="flex items-center gap-3 flex-wrap">
+        <PageHeader title="Trading — Score-5 Live Board"
+          subtitle="Signals the bot shares, the instant they fire — with what happened next. Display-only." />
+        <div className="ml-auto -mt-4"><TradingLive /></div>
       </div>
 
-      {bots.length > 1 && (
-        <div className="flex gap-2 mb-4 flex-wrap">
-          <a href="/command-centre/trading" className={`text-xs rounded-full px-3 py-1 border ${!searchParams.bot ? 'bg-ink text-cream border-ink' : 'border-beige hover:bg-sand'}`}>All bots</a>
-          {bots.map((b) => (
-            <a key={b} href={`?bot=${encodeURIComponent(b)}`} className={`text-xs rounded-full px-3 py-1 border ${searchParams.bot === b ? 'bg-ink text-cream border-ink' : 'border-beige hover:bg-sand'}`}>{b}</a>
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div className="card p-4"><div className="text-2xl font-semibold tabular-nums">{todaySignals.length}</div><div className="text-sm text-muted">Signals today</div></div>
+        <div className="card p-4"><div className="text-2xl font-semibold tabular-nums">{monsters}<span className="text-sm text-muted">/{withOutcome.length}</span></div><div className="text-sm text-muted">≥10x (tracked)</div></div>
+        <div className="card p-4"><div className="text-2xl font-semibold tabular-nums">{withOutcome.length ? Math.round((died / withOutcome.length) * 100) : 0}%</div><div className="text-sm text-muted">Died</div></div>
+        <div className="card p-4"><div className="text-2xl font-semibold tabular-nums">{openTrades.length}</div><div className="text-sm text-muted">Open wallet-watch trades</div></div>
+        <div className="card p-4"><div className={`text-2xl font-semibold tabular-nums ${pnlSol > 0 ? 'text-emerald-700' : pnlSol < 0 ? 'text-red-600' : ''}`}>{sol(pnlSol)}</div><div className="text-sm text-muted">Wallet-watch P&L</div></div>
+      </div>
 
-      {open.length > 0 && (
-        <Section title={`Open Positions (${open.length})`}>
-          <div className="card divide-y divide-beige">
-            {open.map((e) => (
-              <div key={e.id} className="p-3 flex items-center gap-3 flex-wrap">
-                <span className="w-2 h-2 rounded-full bg-honey animate-pulse shrink-0" />
-                <CCBadge tone="honey">{e.bot}</CCBadge>
-                <span className="text-sm font-semibold">{e.symbol ?? (e.mint ? `${e.mint.slice(0, 6)}…` : '—')}</span>
-                {e.side && <CCBadge tone={e.side === 'buy' ? 'good' : 'danger'}>{e.side.toUpperCase()}</CCBadge>}
-                <span className="text-sm tabular-nums">{money(e.usd_value)}</span>
-                {e.reason && <span className="text-xs text-muted">{e.reason}</span>}
-                <span className="text-[11px] text-muted ml-auto">{ago(e.occurred_at)}</span>
-              </div>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      <Section title="Live Feed">
-        {E.length === 0 ? (
-          <EmptyState>
-            No shared trades yet. Point the bot terminal at the intake endpoint — the connection sheet is in
-            ~/business-brain-adjacent docs the owner holds; events appear here the second they arrive.
-          </EmptyState>
-        ) : (
-          <div className="card overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-sand/60 text-xs uppercase tracking-wide text-muted">
-                <tr><th className="text-left px-3 py-2">Time</th><th className="text-left px-3 py-2">Bot</th><th className="text-left px-3 py-2">Coin</th><th className="text-left px-3 py-2">Event</th><th className="text-right px-3 py-2">Value</th><th className="text-right px-3 py-2">P&L</th><th className="text-left px-3 py-2">Note</th></tr>
-              </thead>
-              <tbody className="divide-y divide-beige/70">
-                {E.map((e) => (
-                  <tr key={e.id} className="hover:bg-cream/50">
-                    <td className="px-3 py-2 text-xs text-muted whitespace-nowrap">{dt(e.occurred_at)}</td>
-                    <td className="px-3 py-2"><CCBadge tone="neutral">{e.bot}</CCBadge></td>
-                    <td className="px-3 py-2 font-medium">{e.symbol ?? (e.mint ? `${e.mint.slice(0, 8)}…` : '—')}</td>
-                    <td className="px-3 py-2">
-                      <CCBadge tone={e.event_type === 'close' ? (Number(e.pnl_usd ?? 0) >= 0 ? 'good' : 'danger') : e.side === 'buy' ? 'good' : e.side === 'sell' ? 'danger' : 'info'}>
-                        {e.event_type === 'close' ? 'CLOSE' : (e.side ?? e.event_type).toUpperCase()}
+      <Section title="Signal Feed">
+        {S.length === 0 ? <EmptyState>Waiting for the first score-5. The board updates the second the bot inserts.</EmptyState> : (
+          <div className="space-y-3">
+            {S.map((s) => {
+              const o = O.get(s.id);
+              const t = tFor(s.id, s.mint);
+              const m = s.metrics ?? {};
+              const entry = n(s.entry_mcap_usd) ?? n(s.entry_mcap_sol);
+              const fresh = Date.now() - new Date(s.created_at).getTime() < 30 * 60000;
+              return (
+                <div key={s.id} className={`card p-4 ${fresh ? 'ring-1 ring-honey/60' : ''}`}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {fresh && <span className="w-2 h-2 rounded-full bg-honey animate-pulse" />}
+                    <span className="text-base font-semibold">{s.symbol ?? `${s.mint?.slice(0, 8)}…`}</span>
+                    <CCBadge tone="honey">SCORE {s.score ?? 5}</CCBadge>
+                    <span className="text-xs text-muted">flagged @ {s.age_at_flag_s != null ? `${Math.round(s.age_at_flag_s)}s` : '—'} · entry {kUsd(s.entry_mcap_usd)} ({sol(s.entry_mcap_sol)})</span>
+                    {s.pumpfun_url && <a href={s.pumpfun_url} target="_blank" rel="noopener noreferrer" className="text-xs text-honey hover:underline">pump.fun ↗</a>}
+                    <span className="text-[11px] text-muted ml-auto">{ago(s.created_at)}</span>
+                  </div>
+                  <div className="flex gap-1.5 flex-wrap mt-2 text-[11px]">
+                    {m.absorption_band != null && <span className="rounded bg-sand px-1.5 py-0.5">abs: {m.absorption_band}</span>}
+                    {m.bundle_pct != null && <span className={`rounded px-1.5 py-0.5 ${Number(m.bundle_pct) > 30 ? 'bg-red-50 text-red-700' : 'bg-sand'}`}>bundle {Number(m.bundle_pct).toFixed(0)}%</span>}
+                    {m.n_coord_wallets != null && <span className="rounded bg-sand px-1.5 py-0.5">coord {m.n_coord_wallets}</span>}
+                    {m.real_holders != null && <span className="rounded bg-sand px-1.5 py-0.5">holders {m.real_holders}</span>}
+                    {m.bsr != null && <span className="rounded bg-sand px-1.5 py-0.5">bsr {Number(m.bsr).toFixed(2)}</span>}
+                    {m.net != null && <span className="rounded bg-sand px-1.5 py-0.5">net {Number(m.net).toFixed(1)}</span>}
+                    {m.ntr != null && <span className="rounded bg-sand px-1.5 py-0.5">ntr {Number(m.ntr).toFixed(2)}</span>}
+                  </div>
+                  {o && (
+                    <div className="flex items-center gap-3 flex-wrap mt-2.5 text-sm border-t border-beige/70 pt-2">
+                      <span className="text-[11px] uppercase tracking-wide text-muted">outcome</span>
+                      <span className="tabular-nums text-xs">5m {fmtX(mult(o.mcap_5m, entry))} · 30m {fmtX(mult(o.mcap_30m, entry))} · 1h {fmtX(mult(o.mcap_1h, entry))} · peak {kUsd(o.peak_mcap)}</span>
+                      <CCBadge tone={Number(o.ath_multiple ?? 0) >= 10 ? 'good' : Number(o.ath_multiple ?? 0) >= 2 ? 'honey' : 'neutral'}>ATH {fmtX(n(o.ath_multiple))}</CCBadge>
+                      {o.died && <CCBadge tone="danger">DIED</CCBadge>}
+                    </div>
+                  )}
+                  {t && (
+                    <div className="flex items-center gap-3 flex-wrap mt-2 text-sm bg-cream/70 rounded-lg px-3 py-2">
+                      <span className="text-[11px] uppercase tracking-wide text-muted">wallet-watch</span>
+                      <span className="text-xs tabular-nums">in {sol(t.entry_sol)} @ {kUsd(t.entry_mcap)}{t.exit_ts ? ` → out @ ${kUsd(t.exit_mcap)}` : ''}</span>
+                      <CCBadge tone={t.status === 'open' ? 'honey' : Number(t.pnl_sol ?? 0) >= 0 ? 'good' : 'danger'}>
+                        {t.status === 'open' ? 'OPEN' : `${Number(t.pnl_sol ?? 0) >= 0 ? '+' : ''}${Number(t.pnl_sol ?? 0).toFixed(2)} ◎ (${t.pnl_pct != null ? `${Number(t.pnl_pct).toFixed(0)}%` : '—'})`}
                       </CCBadge>
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{money(e.usd_value)}</td>
-                    <td className={`px-3 py-2 text-right tabular-nums font-medium ${e.pnl_usd == null ? 'text-muted' : Number(e.pnl_usd) >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>{e.pnl_usd == null ? '—' : money(e.pnl_usd)}</td>
-                    <td className="px-3 py-2 text-xs text-muted max-w-[260px] truncate">{e.reason}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </Section>
