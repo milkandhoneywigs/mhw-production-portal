@@ -14,6 +14,7 @@ const COMMAND_LINKS = [
   { href: `${CC}/risks`, label: 'Risks' },
   { href: `${CC}/tasks`, label: 'Tasks' },
   { href: `${CC}/plans`, label: 'Plans' },
+  { href: `${CC}/trading`, label: 'Trading' },
   { href: `${CC}/workers`, label: 'Workers' },
 ];
 
