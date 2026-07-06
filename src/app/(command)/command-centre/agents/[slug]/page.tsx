@@ -7,6 +7,7 @@ import { CCBadge } from '@/components/command/CCBadge';
 import { CommandComposer } from '@/components/command/CommandComposer';
 import { CompletedWork } from '@/components/command/CompletedWork';
 import { agentStatusTone, riskTone, priorityTone, statusTone, money, STATUS_LABEL, type Agent, type AgentUpdate, type OwnerApproval, type OwnerRisk, type AgentCommand, type BusinessTask } from '@/lib/command-centre/cc';
+import { AgentConversations } from '@/components/command/AgentConversations';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,8 @@ export default async function AgentDetail({ params }: { params: { slug: string }
         {a.module_link && <Link href={a.module_link} className="btn-secondary text-xs ml-auto">Open module →</Link>}
       </div>
       <p className="text-sm text-muted mb-6">{a.business_area}{a.description ? ` — ${a.description}` : ''}</p>
+
+      <AgentConversations agentId={agent.id} />
 
       {/* Workboard — the at-a-glance overview: done / to do / plans / approvals */}
       <Section title="Workboard">

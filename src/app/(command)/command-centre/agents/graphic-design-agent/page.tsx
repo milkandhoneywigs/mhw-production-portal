@@ -7,6 +7,7 @@ import { CommandComposer } from '@/components/command/CommandComposer';
 import { ItemApproval } from '@/components/command/ItemApproval';
 import { CompletedWork } from '@/components/command/CompletedWork';
 import { AgentReport } from '@/components/command/AgentReport';
+import { AgentConversations } from '@/components/command/AgentConversations';
 import type { Agent } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -46,6 +47,8 @@ export default async function DesignAgentModule() {
         Every design renders live below — approve the ones you want in use. Brand assets: local Dropbox mirror.
         Generation: Leonardo AI. PREMIUM and OUTLET never mix.
       </p>
+
+      {agent && <AgentConversations agentId={agent.id} />}
 
       {/* THE GALLERY */}
       <Section title={`Design Gallery (${D.length})`}>

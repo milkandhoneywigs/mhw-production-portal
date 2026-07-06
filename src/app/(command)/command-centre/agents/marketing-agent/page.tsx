@@ -8,6 +8,7 @@ import { ApprovalActions, RiskActions } from '@/components/command/ActionButtons
 import { ItemApproval } from '@/components/command/ItemApproval';
 import { CompletedWork, type DoneItem } from '@/components/command/CompletedWork';
 import { AgentReport } from '@/components/command/AgentReport';
+import { AgentConversations } from '@/components/command/AgentConversations';
 import { priorityTone, riskTone, money, type Agent, type OwnerApproval, type OwnerRisk } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -109,6 +110,8 @@ export default async function MarketingAgentModule({ searchParams }: { searchPar
         stages — it never changes budgets, launches or pauses ads, sends email, edits Shopify or touches discounts.
         PREMIUM and OUTLET are tracked separately, always.
       </p>
+
+      {agent && <AgentConversations agentId={agent.id} />}
 
       {/* Approvals first */}
       <Section title={`Approvals — Action Required (${approvalItems.length})`}>

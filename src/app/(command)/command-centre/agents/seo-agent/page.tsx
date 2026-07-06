@@ -8,6 +8,7 @@ import { ApprovalActions, RiskActions } from '@/components/command/ActionButtons
 import { ItemApproval } from '@/components/command/ItemApproval';
 import { CompletedWork, type DoneItem } from '@/components/command/CompletedWork';
 import { AgentReport } from '@/components/command/AgentReport';
+import { AgentConversations } from '@/components/command/AgentConversations';
 import { priorityTone, riskTone, money, type Agent, type OwnerApproval, type OwnerRisk } from '@/lib/command-centre/cc';
 
 export const dynamic = 'force-dynamic';
@@ -101,6 +102,8 @@ export default async function SeoAgentModule() {
         Analyses, recommends and drafts. Anything customer-facing (titles, descriptions, URLs, redirects, schema,
         blogs) requires your approval before it goes live. Product titles and descriptions are never edited.
       </p>
+
+      {agent && <AgentConversations agentId={agent.id} />}
 
       {/* ⬆ APPROVALS FIRST — every drafted change with its full specifics + one-click decision */}
       <Section title={`Approvals — Action Required (${needsApproval})`}>

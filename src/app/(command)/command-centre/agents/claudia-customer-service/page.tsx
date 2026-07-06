@@ -9,6 +9,7 @@ import { RiskActions } from '@/components/command/ActionButtons';
 import { OpportunityActions } from '@/components/command/OpportunityActions';
 import { CompletedWork, type DoneItem } from '@/components/command/CompletedWork';
 import { priorityTone, riskTone, money, type Agent, type OwnerApproval, type OwnerRisk } from '@/lib/command-centre/cc';
+import { AgentConversations } from '@/components/command/AgentConversations';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,8 @@ export default async function ClaudiaModule() {
         Claudia drafts customer replies as internal Gorgias notes for human approval. She signs as Claudia, checks live
         tracking before any shipping reply, and never sends to a customer herself.
       </p>
+
+      {agent && <AgentConversations agentId={agent.id} />}
 
       {/* 1 — Overview */}
       <Section title="Claudia Overview">
