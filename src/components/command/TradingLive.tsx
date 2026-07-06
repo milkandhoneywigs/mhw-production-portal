@@ -27,6 +27,7 @@ export function TradingLive() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'score5_signals' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'score5_outcomes' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'manual_trades' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'score5_research' }, refresh)
       .subscribe((status) => setLive(status === 'SUBSCRIBED'));
 
     const poll = setInterval(refresh, 8000);           // guaranteed floor

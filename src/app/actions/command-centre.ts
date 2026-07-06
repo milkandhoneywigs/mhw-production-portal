@@ -317,3 +317,18 @@ export async function replyToCommand(commandId: string, message: string): Promis
   revalidatePath('/command-centre/commands');
   return {};
 }
+
+// Annotate a score-5 signal: the owner's would-enter/would-not-enter call + notes.
+// Feeds the bot's counterfactual research (owner judgement vs actual outcome).
+export async function annotateSignal(
+  id: string, wouldEnter: 'yes' | 'no' | null, notes?: string,
+): Promise<{ error?: string }> {
+  await requireAdmin();
+  const supabase = createClient();
+  const patch: Record<string, unknown> = { would_enter: wouldEnter };
+  if (notes !== undefined) patch.notes = notes.slice(0, 500) || null;
+  const { error } = await supabase.from('score5_signals').update(patch).eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath('/command-centre/trading');
+  return {};
+}
