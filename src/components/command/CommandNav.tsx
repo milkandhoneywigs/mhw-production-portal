@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 
 const CC = '/command-centre';
 const COMMAND_LINKS = [
+  { href: `${CC}/workspace`, label: '⚡ Workspace' },
   { href: CC, label: 'Owner Dashboard' },
   { href: `${CC}/terminal`, label: 'Terminal' },
   { href: `${CC}/commands`, label: 'Commands' },
