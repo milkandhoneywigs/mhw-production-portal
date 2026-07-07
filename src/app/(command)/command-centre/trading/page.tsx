@@ -61,18 +61,27 @@ function Gauge({ row }: { row: any }) {
   );
 }
 
-export default async function TradingPage() {
+export default async function TradingPage({ searchParams }: { searchParams: { min?: string; died?: string; call?: string; sort?: string } }) {
   await requireAdmin();
   const sb = createClient();
+  const filtered = !!(searchParams.min || searchParams.died || searchParams.call);
   const [{ data: research }, { data: signals }, { data: outcomes }, { data: trades }] = await Promise.all([
     sb.from('score5_research').select('*').order('tier'),
-    sb.from('score5_signals').select('*').order('created_at', { ascending: false }).limit(60),
+    // fetch deeper history when a filter is active so "the 5x club" spans the whole record
+    sb.from('score5_signals').select('*').order('created_at', { ascending: false }).limit(filtered ? 400 : 60),
     sb.from('score5_outcomes').select('*'),
     sb.from('manual_trades').select('*').order('entry_ts', { ascending: false }),
   ]);
   const R = (research ?? []) as any[];
-  const S = (signals ?? []) as any[];
+  let S = (signals ?? []) as any[];
   const O = new Map(((outcomes ?? []) as any[]).map((o) => [o.signal_id, o]));
+
+  // Filters: minimum PeakX, died-only, my call. Sort: newest (default) or PeakX.
+  const min = searchParams.min ? Number(searchParams.min) : null;
+  if (min) S = S.filter((s) => Number(O.get(s.id)?.ath_multiple ?? 0) >= min);
+  if (searchParams.died === '1') S = S.filter((s) => O.get(s.id)?.died);
+  if (searchParams.call === 'yes' || searchParams.call === 'no') S = S.filter((s) => s.would_enter === searchParams.call);
+  if (searchParams.sort === 'peakx') S = [...S].sort((a, b) => Number(O.get(b.id)?.ath_multiple ?? 0) - Number(O.get(a.id)?.ath_multiple ?? 0));
   const T = (trades ?? []) as any[];
   const tFor = (sid: string, mint: string) => T.find((t) => t.signal_id === sid || (t.mint && t.mint === mint));
 
@@ -102,6 +111,29 @@ export default async function TradingPage() {
         <div className="card p-4"><div className="text-2xl font-semibold tabular-nums">{todaySignals.length}</div><div className="text-sm text-muted">Signals today</div></div>
         <div className="card p-4"><div className="text-2xl font-semibold tabular-nums">{openTrades.length}</div><div className="text-sm text-muted">Open wallet-watch trades</div></div>
         <div className="card p-4"><div className={`text-2xl font-semibold tabular-nums ${pnlSol > 0 ? 'text-emerald-700' : pnlSol < 0 ? 'text-red-600' : ''}`}>{sol(pnlSol)}</div><div className="text-sm text-muted">Wallet-watch P&L</div></div>
+      </div>
+
+      {/* Filter / sort bar — isolate the 5x club, deaths, or your own calls */}
+      <div className="flex items-center gap-2 flex-wrap mb-4 text-xs">
+        <span className="text-muted">Filter:</span>
+        {[
+          { label: 'All', href: '/command-centre/trading' },
+          { label: '≥2x', href: '?min=2' }, { label: '≥3x', href: '?min=3' },
+          { label: '≥5x', href: '?min=5' }, { label: '≥10x', href: '?min=10' },
+          { label: 'Died', href: '?died=1' },
+          { label: '✓ my yes', href: '?call=yes' }, { label: '✗ my no', href: '?call=no' },
+        ].map((f) => {
+          const active = (f.href === '/command-centre/trading' && !filtered && searchParams.sort !== 'peakx')
+            || f.href === `?min=${searchParams.min}` || (f.href === '?died=1' && searchParams.died === '1')
+            || f.href === `?call=${searchParams.call}`;
+          return <a key={f.label} href={f.href} className={`rounded-full px-3 py-1 border ${active ? 'bg-ink text-cream border-ink' : 'border-beige hover:bg-sand'}`}>{f.label}</a>;
+        })}
+        <span className="text-muted ml-3">Sort:</span>
+        <a href={`?${new URLSearchParams({ ...(searchParams.min ? { min: searchParams.min } : {}), ...(searchParams.died ? { died: searchParams.died } : {}), ...(searchParams.call ? { call: searchParams.call } : {}) }).toString()}`}
+          className={`rounded-full px-3 py-1 border ${searchParams.sort !== 'peakx' ? 'bg-ink text-cream border-ink' : 'border-beige hover:bg-sand'}`}>Newest</a>
+        <a href={`?${new URLSearchParams({ ...(searchParams.min ? { min: searchParams.min } : {}), ...(searchParams.died ? { died: searchParams.died } : {}), ...(searchParams.call ? { call: searchParams.call } : {}), sort: 'peakx' }).toString()}`}
+          className={`rounded-full px-3 py-1 border ${searchParams.sort === 'peakx' ? 'bg-ink text-cream border-ink' : 'border-beige hover:bg-sand'}`}>Highest PeakX</a>
+        {filtered && <span className="text-muted ml-2">{S.length} match{S.length === 1 ? '' : 'es'}</span>}
       </div>
 
       <Section title="Signal Feed">
