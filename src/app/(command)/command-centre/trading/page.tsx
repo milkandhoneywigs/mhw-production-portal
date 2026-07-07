@@ -65,15 +65,26 @@ export default async function TradingPage({ searchParams }: { searchParams: { mi
   await requireAdmin();
   const sb = createClient();
   const filtered = !!(searchParams.min || searchParams.died || searchParams.call);
-  const [{ data: research }, { data: signals }, { data: outcomes }, { data: trades }] = await Promise.all([
+  const [{ data: research }, { data: outcomes }, { data: trades }] = await Promise.all([
     sb.from('score5_research').select('*').order('tier'),
-    // fetch deeper history when a filter is active so "the 5x club" spans the whole record
-    sb.from('score5_signals').select('*').order('created_at', { ascending: false }).limit(filtered ? 400 : 60),
     sb.from('score5_outcomes').select('*'),
     sb.from('manual_trades').select('*').order('entry_ts', { ascending: false }),
   ]);
+  // Unfiltered: latest 60. Filtered: the ENTIRE ledger, paged 1000 at a time —
+  // "show me every 5x" means every 5x, however old.
+  let signals: any[] = [];
+  if (!filtered) {
+    signals = (await sb.from('score5_signals').select('*').order('created_at', { ascending: false }).limit(60)).data ?? [];
+  } else {
+    for (let from = 0; ; from += 1000) {
+      const { data: page } = await sb.from('score5_signals').select('*')
+        .order('created_at', { ascending: false }).range(from, from + 999);
+      signals.push(...(page ?? []));
+      if (!page || page.length < 1000) break;
+    }
+  }
   const R = (research ?? []) as any[];
-  let S = (signals ?? []) as any[];
+  let S = signals;
   const O = new Map(((outcomes ?? []) as any[]).map((o) => [o.signal_id, o]));
 
   // Filters: minimum PeakX, died-only, my call. Sort: newest (default) or PeakX.
