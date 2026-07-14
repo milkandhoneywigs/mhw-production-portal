@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import {
   supplierConfirmOrder, supplierSetPrice, supplierMarkReadyToDispatch,
   supplierStartProduction, supplierMarkProductionComplete, supplierAddUpdate,
-  supplierUploadTracking, supplierReportDelay,
+  supplierUploadTracking, supplierReportDelay, supplierRequestPayment,
 } from '@/app/actions/supplier';
 import { uploadInvoice } from '@/app/actions/invoices';
 import { ConfirmModal, toast } from './Feedback';
@@ -69,6 +69,13 @@ export function PrimaryActionPanel({ order, action, overdue }: {
             Report delay
           </button>
         )}
+        {/* Pricing + payment are always reachable, not tied to one status. */}
+        {order.supplier_price == null && action?.key !== 'add_price' && !['completed', 'cancelled'].includes(order.status) && (
+          <button className="btn-secondary text-sm" onClick={() => setModal('add_price')}>Add order price</button>
+        )}
+        {order.supplier_price != null && !['completed', 'cancelled'].includes(order.status) && (
+          <button className="btn-secondary text-sm" onClick={() => setModal('request_payment')}>💰 Request payment</button>
+        )}
         <button className="btn-secondary text-sm" onClick={() => setModal('update')}>Add update</button>
         <button className="btn-secondary text-sm" onClick={() => setModal('problem')}>Report a problem</button>
       </div>
@@ -109,6 +116,18 @@ export function PrimaryActionPanel({ order, action, overdue }: {
         <p>{isReadyMade
           ? 'An invoice for 100% of this price will be sent to Milk & Honey for payment.'
           : 'A 50% deposit invoice will be sent to Milk & Honey for payment. The balance is invoiced when production is complete.'}</p>
+      </ConfirmModal>
+
+      {/* Request payment */}
+      <ConfirmModal
+        open={modal === 'request_payment'} title="Request payment"
+        confirmLabel="Send payment request"
+        onConfirm={() => run(() => supplierRequestPayment(order.id), 'Payment request sent to Milk & Honey.')}
+        onClose={() => setModal(null)} pending={pending}
+      >
+        <p>Ask Milk &amp; Honey to arrange payment for order <b>#{order.order_number}</b>
+          {order.supplier_price != null && <> (your price: <b>${Number(order.supplier_price).toFixed(2)} AUD</b>)</>}?</p>
+        <p>They will see your request immediately in their inbox and billing screen.</p>
       </ConfirmModal>
 
       {/* Ready to dispatch */}

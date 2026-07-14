@@ -173,6 +173,37 @@ export async function supplierSetPrice(orderId: string, totalPrice: number) {
   return {};
 }
 
+// Supplier requests payment of their outstanding invoice(s). Surfaces as an
+// order message (drives the owner's inbox bell) + timeline entry.
+export async function supplierRequestPayment(orderId: string) {
+  const profile = await requireProfile();
+  const supabase = createClient();
+  const { data: ord } = await supabase.from('orders')
+    .select('supplier_id, order_number, supplier_price').eq('id', orderId).single();
+  if (!ord) return { error: 'Order not found.' };
+  if (ord.supplier_price == null) return { error: 'Add the order price first.' };
+
+  const { data: unpaid } = await supabase.from('invoices')
+    .select('invoice_number, amount, status').eq('order_id', orderId)
+    .in('status', ['uploaded', 'submitted', 'payment_required', 'approved', 'scheduled_for_payment']);
+  const total = (unpaid ?? []).reduce((s, i) => s + Number(i.amount ?? 0), 0);
+  const detail = total > 0 ? ` — $${total.toFixed(2)} AUD outstanding` : '';
+
+  const { error } = await supabase.from('order_messages').insert({
+    order_id: orderId, sender_id: profile.id,
+    sender_name: profile.full_name || profile.email, sender_role: profile.role,
+    body: `💰 PAYMENT REQUEST for order #${ord.order_number}${detail}. Please arrange payment.`,
+  });
+  if (error) return { error: error.message };
+  await supabase.from('supplier_updates').insert({
+    order_id: orderId, supplier_id: ord.supplier_id, update_type: 'general_note',
+    message: `Payment requested by supplier${detail}.`, created_by: profile.id,
+  });
+  await logAudit({ actorId: profile.id, action: 'supplier.request_payment', entityType: 'order', entityId: orderId, metadata: { total } });
+  revalidatePath('/supplier'); revalidatePath('/billing'); revalidatePath(`/orders/${orderId}`);
+  return {};
+}
+
 // Ready-made: order packed and ready for the DHL pickup/label step.
 export async function supplierMarkReadyToDispatch(orderId: string) {
   const profile = await requireProfile();

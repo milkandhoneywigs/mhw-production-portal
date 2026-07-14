@@ -66,14 +66,14 @@ export interface PrimaryAction { key: SupplierActionKey; label: string; help: st
 
 const RM_ACTIONS: Partial<Record<OrderStatus, PrimaryAction>> = {
   new_ready_made_order: { key: 'confirm', label: 'Confirm stock', help: 'Check you have this wig in stock, then confirm.' },
-  supplier_notified: { key: 'ready_to_dispatch', label: 'Mark ready to dispatch', help: 'The shipping address is shown below. Pack the order, then mark it ready.' },
+  supplier_notified: { key: 'ready_to_dispatch', label: 'Mark ready to dispatch', help: 'The shipping address is shown below. Pack the order, then mark it ready. Add your order price to request payment.' },
   awaiting_dhl_tracking: { key: 'upload_tracking', label: 'Upload tracking', help: 'Create the DHL shipment and add the tracking number here.' },
   tracking_uploaded: { key: 'upload_invoice', label: 'Upload invoice', help: 'Shipped. Add your invoice for this order.' },
 };
 
 const MTO_ACTIONS: Partial<Record<OrderStatus, PrimaryAction>> = {
   new_made_to_order: { key: 'confirm', label: 'Confirm order', help: 'Review the specifications, then confirm you can produce this order.' },
-  awaiting_supplier_confirmation: { key: 'add_price', label: 'Add price', help: 'Confirmed. Add the agreed price for this order.' },
+  awaiting_supplier_confirmation: { key: 'add_price', label: 'Add order price', help: 'Confirmed. Add the agreed price for this order.' },
   invoice_uploaded: { key: 'add_update', label: 'Add production update', help: 'Waiting on payment. You can post updates in the meantime.' },
   payment_required: { key: 'add_update', label: 'Add production update', help: 'Waiting on payment from Milk & Honey.' },
   payment_paid: { key: 'start_production', label: 'Start production', help: 'Payment received — start production when work begins.' },
