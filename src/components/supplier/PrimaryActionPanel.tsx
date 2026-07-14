@@ -97,7 +97,7 @@ export function PrimaryActionPanel({ order, action, overdue }: {
       {/* Add price (with confirmation before any invoice is created) */}
       {modal === 'add_price' && (
         <div className="card p-4 space-y-3 bg-sand/40">
-          <label className="label" htmlFor="price">Total price for this order (AUD)</label>
+          <label className="label" htmlFor="price">Total price for this order — USD, including shipping</label>
           <input id="price" type="number" min="0" step="0.01" className="input w-40" value={price}
             onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 350.00" />
           <div className="flex gap-2">
@@ -112,7 +112,7 @@ export function PrimaryActionPanel({ order, action, overdue }: {
         onConfirm={() => run(() => supplierSetPrice(order.id, Number(price)), 'Price submitted.')}
         onClose={() => setModal(null)} pending={pending}
       >
-        <p>Order <b>#{order.order_number}</b> — total price <b>${Number(price).toFixed(2)} AUD</b>.</p>
+        <p>Order <b>#{order.order_number}</b> — total price <b>${Number(price).toFixed(2)} USD (including shipping)</b>.</p>
         <p>{isReadyMade
           ? 'An invoice for 100% of this price will be sent to Milk & Honey for payment.'
           : 'A 50% deposit invoice will be sent to Milk & Honey for payment. The balance is invoiced when production is complete.'}</p>
@@ -126,7 +126,7 @@ export function PrimaryActionPanel({ order, action, overdue }: {
         onClose={() => setModal(null)} pending={pending}
       >
         <p>Ask Milk &amp; Honey to arrange payment for order <b>#{order.order_number}</b>
-          {order.supplier_price != null && <> (your price: <b>${Number(order.supplier_price).toFixed(2)} AUD</b>)</>}?</p>
+          {order.supplier_price != null && <> (your price: <b>${Number(order.supplier_price).toFixed(2)} USD</b>)</>}?</p>
         <p>They will see your request immediately in their inbox and billing screen.</p>
       </ConfirmModal>
 
@@ -207,7 +207,7 @@ export function PrimaryActionPanel({ order, action, overdue }: {
             </select>
             <input className="input text-sm" placeholder="Your invoice number" value={invoice.number}
               onChange={(e) => setInvoice({ ...invoice, number: e.target.value })} />
-            <input className="input text-sm" type="number" step="0.01" placeholder="Amount (AUD)" value={invoice.amount}
+            <input className="input text-sm" type="number" step="0.01" placeholder="Amount (USD)" value={invoice.amount}
               onChange={(e) => setInvoice({ ...invoice, amount: e.target.value })} />
           </div>
           <div className="flex items-center gap-2 text-sm">
@@ -230,7 +230,7 @@ export function PrimaryActionPanel({ order, action, overdue }: {
         }), 'Invoice submitted for approval.')}
         onClose={() => setModal(null)} pending={pending}
       >
-        <p>Invoice {invoice.number && <b>{invoice.number} </b>}{invoice.amount && <>for <b>${Number(invoice.amount).toFixed(2)} AUD</b> </>}on order <b>#{order.order_number}</b>.</p>
+        <p>Invoice {invoice.number && <b>{invoice.number} </b>}{invoice.amount && <>for <b>${Number(invoice.amount).toFixed(2)} USD</b> </>}on order <b>#{order.order_number}</b>.</p>
         <p>Milk &amp; Honey will review it before payment.</p>
       </ConfirmModal>
 

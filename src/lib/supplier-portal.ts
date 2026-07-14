@@ -21,10 +21,14 @@ const ALL_SECTIONS: SupplierSection[] = [
   { href: '/supplier/messages', label: 'Messages', orderType: null, icon: '✉️' },
 ];
 
-// Phased rollout: sections tied to a hidden order type disappear entirely.
+// Sections SHOWN in the sidebar. A section can be visible while its order type
+// is still outside SUPPLIER_VISIBLE_ORDER_TYPES — it then renders with 0 orders
+// (owner request 2026-07-14: show Made to Order early, empty for now).
+export const SUPPLIER_VISIBLE_SECTIONS: OrderType[] = ['ready_made', 'made_to_order'];
+
 export function visibleSections(): SupplierSection[] {
   return ALL_SECTIONS.filter(
-    (s) => s.orderType === null || (SUPPLIER_VISIBLE_ORDER_TYPES as string[]).includes(s.orderType),
+    (s) => s.orderType === null || SUPPLIER_VISIBLE_SECTIONS.includes(s.orderType),
   );
 }
 

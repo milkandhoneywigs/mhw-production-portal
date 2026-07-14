@@ -213,7 +213,7 @@ export default async function SupplierOrderDetail({ params }: { params: { id: st
 
           <Section title="Financial">
             <div className="card p-4 text-sm space-y-2">
-              <p><span className="text-muted">Your price:</span> {order.supplier_price ? `$${Number(order.supplier_price).toFixed(2)} AUD` : 'Not added yet'}</p>
+              <p><span className="text-muted">Your price:</span> {order.supplier_price ? `$${Number(order.supplier_price).toFixed(2)} USD (incl. shipping)` : 'Not added yet'}</p>
               {((invoices ?? []) as Invoice[]).length === 0 ? (
                 <p className="text-muted">No invoices yet.</p>
               ) : (

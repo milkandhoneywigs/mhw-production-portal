@@ -37,7 +37,7 @@ export default async function PaymentsPage() {
     { label: 'Balance invoices due', value: invoices.filter((i) => i.invoice_type === 'balance' && ['payment_required', 'approved', 'scheduled_for_payment'].includes(i.status)).length, tone: 'balance' as const },
     { label: 'Changes requested', value: invoices.filter((i) => i.status === 'changes_requested').length, tone: 'risk' as const },
     { label: 'Paid this month', value: invoices.filter((i) => i.status === 'paid' && i.paid_at && new Date(i.paid_at) >= thisMonth).length, tone: 'ready' as const },
-    { label: 'Outstanding (AUD)', value: `$${outstanding.toFixed(0)}`, tone: 'neutral' as const },
+    { label: 'Outstanding (USD)', value: `$${outstanding.toFixed(0)}`, tone: 'neutral' as const },
   ];
 
   return (

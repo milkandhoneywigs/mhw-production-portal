@@ -39,10 +39,14 @@ export interface SupplierOrderRow {
 }
 
 // All orders the supplier may see under the current rollout phase. RLS scopes
-// rows to their supplier_id; the phase flag scopes order types.
+// rows to their supplier_id; the phase flag scopes order types. A section can be
+// visible in the sidebar while its type is still data-gated — requesting such a
+// type returns [] so the page renders with 0 orders.
 export async function fetchSupplierOrders(orderType?: OrderType): Promise<SupplierOrderRow[]> {
+  const allowed = SUPPLIER_VISIBLE_ORDER_TYPES as readonly string[];
+  const types = orderType ? [orderType].filter((t) => allowed.includes(t)) : allowed;
+  if (types.length === 0) return [];
   const supabase = createClient();
-  const types = orderType ? [orderType] : (SUPPLIER_VISIBLE_ORDER_TYPES as readonly string[]);
   const { data } = await supabase
     .from('v_supplier_orders')
     .select('*')

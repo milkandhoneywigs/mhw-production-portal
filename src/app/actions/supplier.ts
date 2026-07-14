@@ -80,7 +80,7 @@ export async function supplierMarkProductionComplete(orderId: string) {
   if (balance) {
     await supabase.from('invoices').insert({
       order_id: orderId, supplier_id: ord?.supplier_id, invoice_type: 'balance',
-      amount: balance, currency: 'AUD', status: 'payment_required',
+      amount: balance, currency: 'USD', status: 'payment_required',
       uploaded_by: profile.id, invoice_number: `BAL-${orderId.slice(0, 8)}`,
     });
   }
@@ -152,7 +152,7 @@ export async function supplierSetPrice(orderId: string, totalPrice: number) {
   if (isReadyMade || withDeposit) {
     const { error } = await supabase.from('invoices').insert({
       order_id: orderId, supplier_id: ord?.supplier_id ?? profile.supplier_id,
-      invoice_type: 'initial', amount: invoiceAmount, currency: 'AUD', status: 'payment_required',
+      invoice_type: 'initial', amount: invoiceAmount, currency: 'USD', status: 'payment_required',
       uploaded_by: profile.id,
       invoice_number: `${isReadyMade ? 'FULL' : 'DEP'}-${orderId.slice(0, 8)}`,
     });
@@ -187,7 +187,7 @@ export async function supplierRequestPayment(orderId: string) {
     .select('invoice_number, amount, status').eq('order_id', orderId)
     .in('status', ['uploaded', 'submitted', 'payment_required', 'approved', 'scheduled_for_payment']);
   const total = (unpaid ?? []).reduce((s, i) => s + Number(i.amount ?? 0), 0);
-  const detail = total > 0 ? ` — $${total.toFixed(2)} AUD outstanding` : '';
+  const detail = total > 0 ? ` — $${total.toFixed(2)} USD outstanding` : '';
 
   const { error } = await supabase.from('order_messages').insert({
     order_id: orderId, sender_id: profile.id,
