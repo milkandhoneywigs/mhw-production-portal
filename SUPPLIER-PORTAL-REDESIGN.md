@@ -1,7 +1,17 @@
 # Supplier Portal Redesign — Audit & Implementation Plan
 
-_Stage 1 (Audit) + Stage 2 (Proposed structure). 2026-07-14. No code changes made yet
-(one staged local edit: `SUPPLIER_VISIBLE_ORDER_TYPES` phase constant in `src/lib/constants.ts`)._
+_Stage 1 (Audit) + Stage 2 (Proposed structure) 2026-07-14. **Stages 3+4 BUILT & DEPLOYED
+same day** (commits e3bc19b → 2bafc12): migration 0007 applied to live, (supplier) route
+group shipped, RLS boundaries live-tested as the CBW login (customers table empty, foreign
+storage paths 403, audit_logs empty, internal_notes absent)._
+
+**OWNER HARD RULES captured during build:**
+- Add Price: READY MADE → invoice for **100%** of price; MADE TO ORDER → **50% deposit**.
+- Suppliers only ever see the production length ("length to make"), never customer length.
+
+**Outstanding:** Emily Munn order MH-20260701-8579 (no Shopify match) — awaiting owner
+decision (shipped / duplicate / in-store) before CBW handover; Phase 1 flag currently
+`['ready_made']` in `src/lib/constants.ts`.
 
 ---
 
