@@ -12,7 +12,9 @@ export const dynamic = 'force-dynamic';
 export default async function SupplierDashboard() {
   const profile = await requireSupplier();
   const orders = await fetchSupplierOrders();
-  const unread = await fetchUnreadOrderIds(profile.id, true);
+  // Intersect with visible-phase orders so hidden order types never leak in.
+  const visibleIds = new Set(orders.map((o) => o.id));
+  const unread = new Set([...(await fetchUnreadOrderIds(profile.id, true))].filter((id) => visibleIds.has(id)));
   const tasks = buildTasks(orders, unread);
 
   const active = orders.filter((o) => !['completed', 'cancelled'].includes(o.status));

@@ -121,14 +121,17 @@ export function buildTasks(orders: SupplierOrderRow[], unread: Set<string>): Sup
   return tasks.sort((a, b) => Number(b.urgent) - Number(a.urgent));
 }
 
-// Sidebar badge counts, keyed by section href.
+// Sidebar badge counts, keyed by section href. Everything is intersected with
+// the visible-phase orders so hidden order types never leak into badges.
 export async function fetchBadgeCounts(profileId: string): Promise<Record<string, number>> {
   const orders = await fetchSupplierOrders();
-  const unread = await fetchUnreadOrderIds(profileId, true);
+  const visibleIds = new Set(orders.map((o) => o.id));
+  const unreadAll = await fetchUnreadOrderIds(profileId, true);
+  const unread = new Set([...unreadAll].filter((id) => visibleIds.has(id)));
   const supabase = createClient();
-  const { data: invs } = await supabase.from('invoices').select('id, status');
-  const invoiceActions = ((invs ?? []) as Pick<Invoice, 'id' | 'status'>[])
-    .filter((i) => i.status === 'changes_requested').length;
+  const { data: invs } = await supabase.from('invoices').select('id, status, order_id');
+  const invoiceActions = ((invs ?? []) as Pick<Invoice, 'id' | 'status' | 'order_id'>[])
+    .filter((i) => i.status === 'changes_requested' && visibleIds.has(i.order_id)).length;
 
   const countFor = (type: OrderType) =>
     orders.filter((o) => o.order_type === type &&
