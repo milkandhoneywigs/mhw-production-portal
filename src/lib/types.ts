@@ -120,6 +120,7 @@ export interface Invoice {
   payment_reference: string | null;
   paid_at: string | null;
   notes: string | null; // M&H approval feedback / rejection reason
+  receipt_url: string | null; // transfer receipt uploaded when marked paid (order-files path)
   created_at: string;
   updated_at: string;
 }

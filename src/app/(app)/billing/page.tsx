@@ -66,7 +66,7 @@ export default async function BillingPage() {
                 <td className="td">{i.invoice_number ?? '-'}</td>
                 <td className="td">{i.amount ? `${i.currency} ${i.amount}` : '-'}</td>
                 <td className="td space-x-1">{riskChip(i)}{blocked && <Flag tone="blocked">SHIPMENT BLOCKED</Flag>}</td>
-                <td className="td"><MarkPaidForm invoiceId={i.id} /></td>
+                <td className="td"><MarkPaidForm invoiceId={i.id} orderId={i.order_id} /></td>
               </tr>
             );
           })}

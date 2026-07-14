@@ -18,7 +18,9 @@ export default async function PaymentsPage() {
     supabase.from('invoices').select('*').order('created_at', { ascending: false }),
   ]);
   const invoices = ((invs ?? []) as Invoice[]).filter((i) => orders.some((o) => o.id === i.order_id));
-  const urls = await signFileUrls(invoices.map((i) => i.file_url).filter(Boolean) as string[]);
+  const urls = await signFileUrls(
+    invoices.flatMap((i) => [i.file_url, i.receipt_url]).filter(Boolean) as string[],
+  );
 
   // Orders where the supplier still owes a price.
   const priceRequests = orders.filter((o) =>

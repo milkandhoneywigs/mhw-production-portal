@@ -77,21 +77,24 @@ export async function reviewInvoice(
 }
 
 // Mark an invoice paid — STAFF/ADMIN ONLY (suppliers can never mark paid).
-// Records the manual payment reference; the actual transfer happened outside.
+// Records the manual payment reference + optional transfer receipt (order-files
+// path) so the supplier can see proof of payment on their side.
 export async function markInvoicePaid(
   invoiceId: string,
-  data: { payment_method: PaymentMethod; payment_reference?: string },
+  data: { payment_method: PaymentMethod; payment_reference?: string; receipt_path?: string },
 ) {
   const profile = await requireAdmin();
   const supabase = createClient();
 
   const { data: inv, error: readErr } = await supabase
-    .from('invoices').select('order_id, invoice_type').eq('id', invoiceId).single();
+    .from('invoices').select('order_id, invoice_type, invoice_number, amount, currency, supplier_id').eq('id', invoiceId).single();
   if (readErr || !inv) return { error: 'Invoice not found.' };
 
   const { error } = await supabase.from('invoices').update({
     status: 'paid', payment_method: data.payment_method,
-    payment_reference: data.payment_reference ?? null, paid_at: new Date().toISOString(),
+    payment_reference: data.payment_reference ?? null,
+    receipt_url: data.receipt_path ?? null,
+    paid_at: new Date().toISOString(),
   }).eq('id', invoiceId);
   if (error) return { error: error.message };
 
@@ -99,11 +102,27 @@ export async function markInvoicePaid(
   const nextStatus = inv.invoice_type === 'balance' ? 'balance_paid' : 'payment_paid';
   await supabase.from('orders').update({ status: nextStatus }).eq('id', inv.order_id);
 
+  // Tell the supplier (timeline entry + inbox message with unread badge).
+  const label = `${inv.invoice_number ?? inv.invoice_type} invoice${inv.amount ? ` ($${inv.amount} ${inv.currency})` : ''}`;
+  await supabase.from('supplier_updates').insert({
+    order_id: inv.order_id, supplier_id: inv.supplier_id, update_type: 'general_note',
+    message: `Payment made for ${label}.${data.receipt_path ? ' Transfer receipt attached.' : ''}`,
+    created_by: profile.id,
+  });
+  await supabase.from('order_messages').insert({
+    order_id: inv.order_id, sender_id: profile.id,
+    sender_name: profile.full_name || profile.email, sender_role: profile.role,
+    body: `✅ Payment made for ${label}.${data.receipt_path ? ' Transfer receipt attached — see Payments.' : ''}`,
+    attachment_url: data.receipt_path ?? null,
+    attachment_name: data.receipt_path ? 'Transfer receipt' : null,
+  });
+
   await logAudit({
     actorId: profile.id, action: 'invoice.mark_paid', entityType: 'invoice', entityId: invoiceId,
-    metadata: { method: data.payment_method, reference: data.payment_reference },
+    metadata: { method: data.payment_method, reference: data.payment_reference, receipt: !!data.receipt_path },
   });
   revalidatePath('/billing');
   revalidatePath(`/orders/${inv.order_id}`);
+  revalidatePath('/supplier');
   return {};
 }

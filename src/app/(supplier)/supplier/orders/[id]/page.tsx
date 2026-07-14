@@ -79,7 +79,7 @@ export default async function SupplierOrderDetail({ params }: { params: { id: st
   const fileRefs = [
     ...((files ?? []) as OrderFile[]).map((f) => f.file_url),
     ...((msgs ?? []) as OrderMessage[]).map((m) => m.attachment_url).filter(Boolean) as string[],
-    ...((invoices ?? []) as Invoice[]).map((i) => i.file_url).filter(Boolean) as string[],
+    ...((invoices ?? []) as Invoice[]).flatMap((i) => [i.file_url, i.receipt_url]).filter(Boolean) as string[],
   ];
   const urls = await signFileUrls(fileRefs);
 
@@ -224,6 +224,7 @@ export default async function SupplierOrderDetail({ params }: { params: { id: st
                       {i.amount != null && <span>${Number(i.amount).toFixed(2)}</span>}
                       <span className="text-xs rounded-full px-2 py-0.5 bg-sand ring-1 ring-beige">{i.status.replaceAll('_', ' ')}</span>
                       {i.file_url && urls[i.file_url] && <a className="text-xs underline" href={urls[i.file_url]} target="_blank" rel="noreferrer">view</a>}
+                      {i.receipt_url && urls[i.receipt_url] && <a className="text-xs underline text-emerald-700" href={urls[i.receipt_url]} target="_blank" rel="noreferrer">🧾 transfer receipt</a>}
                       {i.notes && <span className="text-xs text-red-700 w-full">Note from Milk &amp; Honey: {i.notes}</span>}
                     </li>
                   ))}

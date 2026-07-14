@@ -129,6 +129,11 @@ export function PaymentsBoard({ invoices, orders, priceRequests, fileUrls }: {
                   </span>
                   {i.notes && <p className="text-xs text-red-700 mt-1">Milk &amp; Honey: {i.notes}</p>}
                   {i.paid_at && <p className="text-xs text-muted mt-1">Paid {new Date(i.paid_at).toLocaleDateString('en-AU')}{i.payment_reference ? ` · ref ${i.payment_reference}` : ''}</p>}
+                  {i.receipt_url && fileUrls[i.receipt_url] && (
+                    <a className="text-xs underline text-emerald-700 mt-1 inline-block" href={fileUrls[i.receipt_url]} target="_blank" rel="noreferrer">
+                      🧾 View transfer receipt
+                    </a>
+                  )}
                 </div>
                 <div className="md:w-24 shrink-0 md:text-right">
                   {url && <a className="btn-secondary text-xs" href={url} target="_blank" rel="noreferrer">View</a>}
