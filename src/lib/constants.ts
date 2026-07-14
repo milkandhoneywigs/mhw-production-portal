@@ -5,6 +5,11 @@ export type Role = 'admin' | 'staff' | 'supplier';
 export type OrderType = 'ready_made' | 'made_to_order' | 'stock' | 'needs_review';
 export type RiskLevel = 'low' | 'medium' | 'high';
 
+// Supplier portal phased rollout. Phase 1 = READY MADE only: suppliers see
+// nothing but ready_made orders. Widen this list to unlock later phases
+// (e.g. add 'made_to_order', then 'stock').
+export const SUPPLIER_VISIBLE_ORDER_TYPES: OrderType[] = ['ready_made'];
+
 export const READY_MADE_STATUSES = [
   'new_ready_made_order',
   'supplier_notified',

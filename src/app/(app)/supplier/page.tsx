@@ -5,7 +5,7 @@ import { StageBadge, OrderTypeBadge } from '@/components/Badges';
 import { SupplierActions } from '@/components/supplier/SupplierActions';
 import { OrderMessages } from '@/components/order/OrderMessages';
 import { showroomFromShipping, totalUnits, type RestockItem } from '@/lib/business/restock';
-import { supplierShippingInstruction } from '@/lib/constants';
+import { supplierShippingInstruction, SUPPLIER_VISIBLE_ORDER_TYPES } from '@/lib/constants';
 import type { OrderMessage } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -36,7 +36,7 @@ export default async function SupplierDashboard() {
   const supabase = createClient();
   // RLS on the underlying orders table restricts these to the supplier's own orders.
   const [{ data }, { data: allMsgs }] = await Promise.all([
-    supabase.from('v_supplier_orders').select('*').order('created_at', { ascending: false }),
+    supabase.from('v_supplier_orders').select('*').in('order_type', SUPPLIER_VISIBLE_ORDER_TYPES).order('created_at', { ascending: false }),
     supabase.from('order_messages').select('*').order('created_at'),
   ]);
   const orders = (data ?? []) as SupplierOrder[];
@@ -89,8 +89,7 @@ export default async function SupplierDashboard() {
                   <dl className="text-sm grid grid-cols-2 gap-x-3 gap-y-0.5">
                     <div><span className="text-muted">Code:</span> {o.supplier_style_code ?? '-'}</div>
                     <div><span className="text-muted">Style:</span> {o.internal_style_name ?? '-'}</div>
-                    <div><span className="text-muted">Cust length:</span> {o.customer_ordered_length ?? '-'}</div>
-                    <div><span className="text-muted">Prod length:</span> {o.supplier_order_length ?? '-'}</div>
+                    <div><span className="text-muted">Length to make:</span> {o.supplier_order_length ?? '-'}</div>
                     <div><span className="text-muted">Cap size:</span> {o.cap_size ?? '-'}</div>
                     <div><span className="text-muted">Density:</span> {o.density ?? '-'}</div>
                   </dl>
