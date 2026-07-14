@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { PageHeader, Section, StatCard, EmptyState } from '@/components/ui';
 import { Flag } from '@/components/Badges';
 import { MarkPaidForm } from '@/components/billing/MarkPaidForm';
+import { ReviewInvoiceForm } from '@/components/billing/ReviewInvoiceForm';
 import { INVOICE_MEDIUM_RISK_HOURS, INVOICE_HIGH_RISK_HOURS } from '@/lib/constants';
 import type { Invoice } from '@/lib/types';
 
@@ -22,6 +23,7 @@ export default async function BillingPage() {
     .order('created_at', { ascending: false });
   const invoices = (data ?? []) as InvoiceRow[];
 
+  const submitted = invoices.filter((i) => i.status === 'submitted');
   const unpaid = invoices.filter((i) => i.status === 'uploaded' || i.status === 'payment_required');
   const balanceReq = unpaid.filter((i) => i.invoice_type === 'balance');
   const initialReq = unpaid.filter((i) => i.invoice_type !== 'balance');
@@ -83,6 +85,31 @@ export default async function BillingPage() {
         <StatCard label="Paid invoices" value={paid.length} tone="good" />
         <StatCard label="Suppliers billed this month" value={spend.size} />
       </div>
+
+      <Section title="Submitted by supplier — awaiting your approval">
+        {submitted.length === 0 ? <EmptyState>No invoices awaiting review.</EmptyState> : (
+          <div className="card overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-sand/60 border-b border-beige"><tr>
+                <th className="th">Order</th><th className="th">Supplier</th><th className="th">Type</th>
+                <th className="th">Invoice</th><th className="th">Amount</th><th className="th">Review</th>
+              </tr></thead>
+              <tbody className="divide-y divide-beige">
+                {submitted.map((i) => (
+                  <tr key={i.id}>
+                    <td className="td font-medium"><Link href={`/orders/${i.order_id}`} className="hover:underline">{i.order?.order_number ?? '-'}</Link></td>
+                    <td className="td">{i.supplier?.name ?? '-'}</td>
+                    <td className="td capitalize">{i.invoice_type}</td>
+                    <td className="td">{i.invoice_number ?? '-'}</td>
+                    <td className="td">{i.amount ? `${i.currency} ${i.amount}` : '-'}</td>
+                    <td className="td"><ReviewInvoiceForm invoiceId={i.id} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Section>
 
       <Section title="Balance required (shipment blocked)">
         {balanceReq.length ? table(balanceReq, true) : <EmptyState>No balance payments outstanding.</EmptyState>}

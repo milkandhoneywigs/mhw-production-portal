@@ -4,7 +4,9 @@ import type { Role, OrderType, RiskLevel, OrderStatus } from './constants';
 export type OrderSource = 'shopify' | 'fresha' | 'manual' | 'custom' | 'other';
 export type ShippingDestination = 'customer_direct' | 'mhw_showroom' | 'qld_showroom' | 'other';
 export type InvoiceType = 'initial' | 'balance' | 'other';
-export type InvoiceStatus = 'uploaded' | 'payment_required' | 'paid' | 'disputed' | 'cancelled';
+export type InvoiceStatus =
+  | 'uploaded' | 'payment_required' | 'paid' | 'disputed' | 'cancelled'
+  | 'submitted' | 'approved' | 'changes_requested' | 'scheduled_for_payment';
 export type PaymentMethod = 'bank_transfer' | 'paypal' | 'other';
 export type TrackingType = 'supplier_to_customer' | 'supplier_to_showroom' | 'showroom_to_customer';
 export type CustomerUpdateType =
@@ -15,7 +17,8 @@ export type QcStatus = 'pending' | 'passed' | 'failed' | 'manager_review';
 export type SupplierUpdateType =
   | 'confirmation' | 'invoice_uploaded' | 'production_update'
   | 'production_complete' | 'tracking_uploaded' | 'delay_notice' | 'general_note';
-export type FileType = 'invoice' | 'qc_photo' | 'supplier_attachment' | 'other';
+export type FileType = 'invoice' | 'qc_photo' | 'supplier_attachment' | 'other' | 'packing_list' | 'production_photo';
+export type PaymentTerms = 'deposit_50' | 'full_on_completion';
 
 export interface Profile {
   id: string;
@@ -116,6 +119,7 @@ export interface Invoice {
   payment_method: PaymentMethod | null;
   payment_reference: string | null;
   paid_at: string | null;
+  notes: string | null; // M&H approval feedback / rejection reason
   created_at: string;
   updated_at: string;
 }
@@ -183,5 +187,44 @@ export interface OrderMessage {
   sender_name: string | null;
   sender_role: Role | null;
   body: string;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  created_at: string;
+}
+
+export interface OrderDelay {
+  id: string;
+  order_id: string;
+  supplier_id: string | null;
+  reason: string;
+  revised_completion_date: string | null;
+  message: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface RestockItemRow {
+  id: string;
+  order_id: string;
+  style_name: string;
+  supplier_style_code: string | null;
+  length: string | null;
+  cap_size: string | null;
+  colour: string | null;
+  density: string | null;
+  quantity: number;
+  qty_completed: number;
+  unit_price: number | null;
+  status: string;
+  production_notes: string | null;
+  position: number;
+}
+
+export interface OrderFile {
+  id: string;
+  order_id: string | null;
+  file_type: FileType;
+  file_url: string; // http(s) URL (legacy) or an order-files storage path
+  uploaded_by: string | null;
   created_at: string;
 }

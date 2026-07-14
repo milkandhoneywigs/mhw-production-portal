@@ -6,9 +6,10 @@ import { requireProfile, requireAdmin } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 import type { InvoiceType, PaymentMethod } from '@/lib/types';
 
-// Upload an invoice (staff OR supplier via RLS). An uploaded, unpaid invoice is
-// immediately 'payment_required'. Payments happen manually outside the portal;
-// this only records status.
+// Upload an invoice (admin OR supplier via RLS).
+//   Supplier uploads  -> 'submitted' (awaiting M&H review; order status untouched).
+//   Admin uploads     -> straight to 'payment_required' (their own approval is implied).
+// Payments happen manually outside the portal; this only records status.
 export async function uploadInvoice(
   orderId: string,
   data: { invoice_type: InvoiceType; invoice_number?: string; amount?: number; currency?: string; file_url?: string },
@@ -17,26 +18,61 @@ export async function uploadInvoice(
   if (profile.role === 'staff') return { error: 'Billing is for admin and supplier only.' };
   const supabase = createClient();
   const { data: ord } = await supabase.from('orders').select('supplier_id').eq('id', orderId).single();
+  const isSupplier = profile.role === 'supplier';
 
   const { error } = await supabase.from('invoices').insert({
     order_id: orderId, supplier_id: ord?.supplier_id ?? profile.supplier_id,
     invoice_type: data.invoice_type, invoice_number: data.invoice_number ?? null,
     amount: data.amount ?? null, currency: data.currency ?? 'AUD',
     file_url: data.file_url ?? null, uploaded_by: profile.id,
-    status: 'payment_required',
+    status: isSupplier ? 'submitted' : 'payment_required',
   });
   if (error) return { error: error.message };
 
-  // Reflect the payment gate on the order status.
-  const orderStatus = data.invoice_type === 'balance' ? 'balance_payment_required' : 'payment_required';
-  await supabase.from('orders').update({ status: orderStatus }).eq('id', orderId);
+  // Admin uploads gate the order immediately; supplier submissions gate on approval.
+  if (!isSupplier) {
+    const orderStatus = data.invoice_type === 'balance' ? 'balance_payment_required' : 'payment_required';
+    await supabase.from('orders').update({ status: orderStatus }).eq('id', orderId);
+  }
   await supabase.from('supplier_updates').insert({
     order_id: orderId, supplier_id: ord?.supplier_id, update_type: 'invoice_uploaded',
-    message: `Invoice uploaded (${data.invoice_type}).`, created_by: profile.id,
+    message: isSupplier ? `Invoice submitted for approval (${data.invoice_type}).` : `Invoice uploaded (${data.invoice_type}).`,
+    created_by: profile.id,
   });
-  await logAudit({ actorId: profile.id, action: 'invoice.upload', entityType: 'order', entityId: orderId, metadata: { invoice_type: data.invoice_type } });
+  await logAudit({ actorId: profile.id, action: 'invoice.upload', entityType: 'order', entityId: orderId, metadata: { invoice_type: data.invoice_type, submitted: isSupplier } });
   revalidatePath(`/orders/${orderId}`);
   revalidatePath('/billing');
+  revalidatePath('/supplier');
+  return {};
+}
+
+// Admin reviews a supplier-submitted invoice: approve (moves the order to its
+// payment gate) or request changes (supplier sees the reason and resubmits).
+export async function reviewInvoice(
+  invoiceId: string,
+  decision: 'approve' | 'changes',
+  notes?: string,
+) {
+  const profile = await requireAdmin();
+  const supabase = createClient();
+  const { data: inv } = await supabase.from('invoices').select('order_id, invoice_type, status').eq('id', invoiceId).single();
+  if (!inv) return { error: 'Invoice not found.' };
+  if (inv.status !== 'submitted') return { error: 'Only submitted invoices can be reviewed.' };
+
+  const { error } = await supabase.from('invoices').update({
+    status: decision === 'approve' ? 'payment_required' : 'changes_requested',
+    notes: notes?.trim() || null,
+  }).eq('id', invoiceId);
+  if (error) return { error: error.message };
+
+  if (decision === 'approve') {
+    const orderStatus = inv.invoice_type === 'balance' ? 'balance_payment_required' : 'payment_required';
+    await supabase.from('orders').update({ status: orderStatus }).eq('id', inv.order_id);
+  }
+  await logAudit({ actorId: profile.id, action: `invoice.${decision === 'approve' ? 'approve' : 'request_changes'}`, entityType: 'invoice', entityId: invoiceId, metadata: { notes } });
+  revalidatePath('/billing');
+  revalidatePath('/supplier');
+  revalidatePath(`/orders/${inv.order_id}`);
   return {};
 }
 

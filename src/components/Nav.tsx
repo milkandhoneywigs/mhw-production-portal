@@ -18,16 +18,10 @@ const ADMIN_LINKS = [
   { href: '/settings/users', label: 'Users & Settings' },
   { href: '/command-centre', label: '⌘ Command Centre' },
 ];
-const SUPPLIER_LINKS = [{ href: '/supplier', label: 'My Orders' }];
-
 export function Nav({ role }: { role: Role }) {
   const pathname = usePathname();
-  const links =
-    role === 'supplier'
-      ? SUPPLIER_LINKS
-      : role === 'admin'
-      ? [...STAFF_LINKS, ...ADMIN_LINKS]
-      : STAFF_LINKS;
+  // Suppliers have their own portal shell at /supplier — this nav is staff/admin only.
+  const links = role === 'admin' ? [...STAFF_LINKS, ...ADMIN_LINKS] : STAFF_LINKS;
 
   return (
     <nav className="flex flex-col gap-1">

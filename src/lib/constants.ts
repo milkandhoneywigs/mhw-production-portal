@@ -41,9 +41,13 @@ export const MADE_TO_ORDER_STATUSES = [
   'completed',
 ] as const;
 
+// Statuses shared by every workflow (migration 0007).
+export const SHARED_STATUSES = ['cancelled', 'on_hold'] as const;
+
 export type OrderStatus =
   | (typeof READY_MADE_STATUSES)[number]
-  | (typeof MADE_TO_ORDER_STATUSES)[number];
+  | (typeof MADE_TO_ORDER_STATUSES)[number]
+  | (typeof SHARED_STATUSES)[number];
 
 // Human-readable labels for every status.
 export const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -71,6 +75,8 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   delayed_at_risk: 'Delayed / At Risk',
   manager_review_required: 'Manager Review Required',
   completed: 'Completed',
+  cancelled: 'Cancelled',
+  on_hold: 'On Hold',
 };
 
 // Badge colour token per status. Maps to Tailwind classes in StatusBadge.
@@ -103,6 +109,8 @@ export const STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   delayed_at_risk: 'risk',
   manager_review_required: 'risk',
   completed: 'done',
+  cancelled: 'done',
+  on_hold: 'blocked',
 };
 
 export const TONE_CLASSES: Record<BadgeTone, string> = {
@@ -195,7 +203,7 @@ export const STAGE_TONE: Record<Stage, BadgeTone> = {
 
 // Map a detailed status onto one of the 5 stages.
 export function stageOf(status: OrderStatus): Stage {
-  if (['completed', 'customer_notified'].includes(status)) return 'complete';
+  if (['completed', 'customer_notified', 'cancelled'].includes(status)) return 'complete';
   if (['shipped_to_showroom', 'tracking_uploaded', 'awaiting_dhl_tracking', 'dispatched_to_customer', 'arrived_at_showroom'].includes(status)) return 'in_transit';
   if (['production_complete', 'balance_payment_required', 'balance_paid', 'qc_required', 'qc_passed', 'ready_to_dispatch'].includes(status)) return 'production_finished';
   if (['payment_paid', 'in_production', 'production_update_due', 'supplier_notified'].includes(status)) return 'in_progress';
@@ -204,9 +212,9 @@ export function stageOf(status: OrderStatus): Stage {
 
 // Which detailed statuses fall under each stage (for list filtering).
 export const STAGE_STATUSES: Record<Stage, OrderStatus[]> = {
-  new_order: ['new_ready_made_order', 'new_made_to_order', 'awaiting_supplier_confirmation', 'payment_required', 'invoice_uploaded', 'manager_review_required', 'delayed_at_risk'],
+  new_order: ['new_ready_made_order', 'new_made_to_order', 'awaiting_supplier_confirmation', 'payment_required', 'invoice_uploaded', 'manager_review_required', 'delayed_at_risk', 'on_hold'],
   in_progress: ['payment_paid', 'in_production', 'production_update_due', 'supplier_notified'],
   production_finished: ['production_complete', 'balance_payment_required', 'balance_paid', 'qc_required', 'qc_passed', 'ready_to_dispatch'],
   in_transit: ['shipped_to_showroom', 'tracking_uploaded', 'awaiting_dhl_tracking', 'dispatched_to_customer', 'arrived_at_showroom'],
-  complete: ['completed', 'customer_notified'],
+  complete: ['completed', 'customer_notified', 'cancelled'],
 };
