@@ -22,9 +22,9 @@ const ALL_SECTIONS: SupplierSection[] = [
 ];
 
 // Sections SHOWN in the sidebar. A section can be visible while its order type
-// is still outside SUPPLIER_VISIBLE_ORDER_TYPES — it then renders with 0 orders
-// (owner request 2026-07-14: show Made to Order early, empty for now).
-export const SUPPLIER_VISIBLE_SECTIONS: OrderType[] = ['ready_made', 'made_to_order'];
+// is still outside SUPPLIER_VISIBLE_ORDER_TYPES — it then renders with 0 orders.
+// (2026-07-27: Bulk Store Orders/restock now live alongside ready-made + in-store MTO.)
+export const SUPPLIER_VISIBLE_SECTIONS: OrderType[] = ['ready_made', 'made_to_order', 'stock'];
 
 export function visibleSections(): SupplierSection[] {
   return ALL_SECTIONS.filter(

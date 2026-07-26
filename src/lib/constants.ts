@@ -5,10 +5,16 @@ export type Role = 'admin' | 'staff' | 'supplier';
 export type OrderType = 'ready_made' | 'made_to_order' | 'stock' | 'needs_review';
 export type RiskLevel = 'low' | 'medium' | 'high';
 
-// Supplier portal phased rollout. Phase 1 = READY MADE only: suppliers see
-// nothing but ready_made orders. Widen this list to unlock later phases
-// (e.g. add 'made_to_order', then 'stock').
-export const SUPPLIER_VISIBLE_ORDER_TYPES: OrderType[] = ['ready_made'];
+// Supplier portal visibility. Suppliers see READY TO SHIP (ready_made),
+// STORE RESTOCK (stock), and IN-STORE made-to-order. Online (Shopify-sourced)
+// made-to-order is deliberately withheld and filtered out in fetchSupplierOrders
+// via SUPPLIER_ONLINE_SOURCE (owner rule 2026-07-27).
+export const SUPPLIER_VISIBLE_ORDER_TYPES: OrderType[] = ['ready_made', 'made_to_order', 'stock'];
+
+// Orders from this source are "online". Online made_to_order is NOT pushed to the
+// supplier (only in-store / non-online made_to_order is). ready_made and stock are
+// pushed regardless of source.
+export const SUPPLIER_ONLINE_SOURCE = 'shopify' as const;
 
 export const READY_MADE_STATUSES = [
   'new_ready_made_order',

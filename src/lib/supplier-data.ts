@@ -1,8 +1,8 @@
 import 'server-only';
 import { createClient } from './supabase/server';
-import { SUPPLIER_VISIBLE_ORDER_TYPES, type OrderStatus, type OrderType } from './constants';
+import { SUPPLIER_VISIBLE_ORDER_TYPES, SUPPLIER_ONLINE_SOURCE, type OrderStatus, type OrderType } from './constants';
 import { SUPPLIER_ACTIONABLE, daysUntil, primaryActionFor } from './supplier-portal';
-import type { Invoice, OrderMessage } from './types';
+import type { Invoice, OrderMessage, OrderSource } from './types';
 
 // The supplier-safe order shape (v_supplier_orders, post-0007).
 export interface SupplierOrderRow {
@@ -10,6 +10,7 @@ export interface SupplierOrderRow {
   order_number: string;
   supplier_reference: string | null;
   order_type: OrderType;
+  source: OrderSource;
   status: OrderStatus;
   supplier_id: string;
   customer_facing_product_name: string | null;
@@ -52,7 +53,15 @@ export async function fetchSupplierOrders(orderType?: OrderType): Promise<Suppli
     .select('*')
     .in('order_type', types as string[])
     .order('created_at', { ascending: false });
-  return (data ?? []) as SupplierOrderRow[];
+  // ready_made and stock are always shown. For made_to_order, only IN-STORE (non-online)
+  // is pushed to the supplier; online (Shopify) is withheld. Fail-safe: if source is
+  // absent (e.g. the 0009 view migration has not landed yet) we withhold ALL made_to_order
+  // rather than risk leaking online orders.
+  return ((data ?? []) as SupplierOrderRow[]).filter((o) =>
+    o.order_type === 'made_to_order'
+      ? o.source != null && o.source !== SUPPLIER_ONLINE_SOURCE
+      : true,
+  );
 }
 
 // Threads with a message from the other side newer than the viewer's last read.
