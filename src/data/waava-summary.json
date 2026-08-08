@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-08T04:39:36.739Z",
+  "generated_at": "2026-08-08T04:51:48.200Z",
   "total": 5705,
   "with_phone": 5116,
-  "with_email": 0,
-  "contactable": 5116,
+  "with_email": 3243,
+  "contactable": 5354,
   "categories": [
     "bar",
     "cafe",
@@ -27,7 +27,7 @@
     "ACT": {
       "total": 333,
       "phone": 290,
-      "email": 0,
+      "email": 193,
       "bar": 60,
       "cafe": 57,
       "gym": 60,
@@ -39,7 +39,7 @@
     "NSW": {
       "total": 1148,
       "phone": 1049,
-      "email": 0,
+      "email": 659,
       "bar": 209,
       "cafe": 204,
       "gym": 209,
@@ -51,7 +51,7 @@
     "NT": {
       "total": 268,
       "phone": 236,
-      "email": 0,
+      "email": 132,
       "bar": 60,
       "cafe": 49,
       "gym": 50,
@@ -63,7 +63,7 @@
     "QLD": {
       "total": 1562,
       "phone": 1420,
-      "email": 0,
+      "email": 914,
       "bar": 300,
       "cafe": 263,
       "gym": 268,
@@ -75,7 +75,7 @@
     "SA": {
       "total": 374,
       "phone": 316,
-      "email": 0,
+      "email": 209,
       "bar": 60,
       "cafe": 55,
       "gym": 60,
@@ -87,7 +87,7 @@
     "TAS": {
       "total": 531,
       "phone": 479,
-      "email": 0,
+      "email": 279,
       "bar": 120,
       "cafe": 90,
       "gym": 92,
@@ -99,7 +99,7 @@
     "VIC": {
       "total": 911,
       "phone": 834,
-      "email": 0,
+      "email": 509,
       "bar": 180,
       "cafe": 142,
       "gym": 175,
@@ -111,7 +111,7 @@
     "WA": {
       "total": 578,
       "phone": 492,
-      "email": 0,
+      "email": 348,
       "bar": 118,
       "cafe": 96,
       "gym": 76,
