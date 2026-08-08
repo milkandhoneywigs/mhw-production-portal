@@ -89,11 +89,11 @@ export default async function WaavaProspectingPage({
               return (
                 <tr key={st} className="border-b border-black/5 hover:bg-sand/40">
                   <td className="p-3 font-medium">
-                    <Link href={`/waava/prospecting${qs({ state: st, cat: undefined })}`} className="hover:text-honey">{st}</Link>
+                    <Link href={`/command-centre/waava/prospecting?state=${st}`} className="hover:text-honey">{st}</Link>
                   </td>
                   {cats.map((c) => (
                     <td key={c} className="p-3 text-right tabular-nums">
-                      <Link href={`/waava/prospecting${qs({ state: st, cat: c })}`} className="hover:text-honey">{row[c] || 0}</Link>
+                      <Link href={`/command-centre/waava/prospecting${qs({ state: st, cat: c })}`} className="hover:text-honey">{row[c] || 0}</Link>
                     </td>
                   ))}
                   <td className="p-3 text-right tabular-nums font-semibold">{row.total}</td>
@@ -107,10 +107,10 @@ export default async function WaavaProspectingPage({
       {/* browse / filter */}
       <div className="flex items-center flex-wrap gap-2 mb-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mr-2">Browse prospects</h2>
-        <Link href="/waava/prospecting" className={`text-xs px-2 py-1 rounded ${!sp.state && !sp.cat && !sp.email ? 'bg-ink text-cream' : 'card'}`}>All</Link>
+        <Link href="/command-centre/waava/prospecting" className={`text-xs px-2 py-1 rounded ${!sp.state && !sp.cat && !sp.email ? 'bg-ink text-cream' : 'card'}`}>All</Link>
         {sp.state && <span className="text-xs px-2 py-1 rounded card">{sp.state} ✕</span>}
         {sp.cat && <span className="text-xs px-2 py-1 rounded card">{label(sp.cat)} ✕</span>}
-        <Link href={`/waava/prospecting${qs({ email: sp.email === '1' ? undefined : '1' })}`} className={`text-xs px-2 py-1 rounded ${sp.email === '1' ? 'bg-ink text-cream' : 'card'}`}>Has email</Link>
+        <Link href={`/command-centre/waava/prospecting${qs({ email: sp.email === '1' ? undefined : '1' })}`} className={`text-xs px-2 py-1 rounded ${sp.email === '1' ? 'bg-ink text-cream' : 'card'}`}>Has email</Link>
         <span className="text-xs text-muted ml-auto">{list.length.toLocaleString()} match · showing {shown.length}</span>
       </div>
       <div className="card p-0 overflow-x-auto">
@@ -145,7 +145,7 @@ export default async function WaavaProspectingPage({
       <p className="text-xs text-muted mt-4">
         Generated {new Date(summary.generated_at).toLocaleString('en-AU', { timeZone: 'Australia/Sydney' })} AEST ·
         full CSV export at <code>~/waava-brain/arms/prospecting/waava_prospects.csv</code>.
-        <Link href="/waava" className="text-honey hover:underline ml-2">← WAAVA home</Link>
+        <Link href="/command-centre/waava" className="text-honey hover:underline ml-2">← WAAVA home</Link>
       </p>
     </>
   );

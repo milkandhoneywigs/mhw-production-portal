@@ -10,21 +10,21 @@ const AGENTS = [
     name: 'Venue Prospecting',
     tag: 'Lead engine',
     desc: 'B2B venue acquisition — find, qualify and prioritise venues, then draft outreach. Station density is the flywheel.',
-    href: '/waava/prospecting',
+    href: '/command-centre/waava/prospecting',
   },
   {
     slug: 'seo-geo',
     name: 'Local SEO / GEO',
     tag: 'Discovery',
     desc: '"power bank rental near me / [city]", Find-WAAVA locator pages, and "host a charging station" venue keywords.',
-    href: '/waava/seo-geo',
+    href: '/command-centre/waava/seo-geo',
   },
   {
     slug: 'marketing-research',
     name: 'Marketing Research',
     tag: 'Intel',
     desc: 'Competitor tracking (ChargeUp opacity vs WAAVA transparency), venue-category & city prioritisation, chain targets.',
-    href: '/waava/marketing-research',
+    href: '/command-centre/waava/marketing-research',
   },
 ];
 

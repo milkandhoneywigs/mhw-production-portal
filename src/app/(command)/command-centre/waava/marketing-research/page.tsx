@@ -28,7 +28,7 @@ export default async function WaavaResearchPage() {
           </div>
         ))}
       </div>
-      <p className="text-xs text-muted mt-4">Scaffold. Full intel: <code>~/waava-brain/knowledge/competitors.md</code>. <Link href="/waava" className="text-honey hover:underline">← WAAVA home</Link></p>
+      <p className="text-xs text-muted mt-4">Scaffold. Full intel: <code>~/waava-brain/knowledge/competitors.md</code>. <Link href="/command-centre/waava" className="text-honey hover:underline">← WAAVA home</Link></p>
     </>
   );
 }

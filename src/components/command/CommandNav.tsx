@@ -21,6 +21,7 @@ const COMMAND_LINKS = [
 // Every module opens its agent's workspace; Production also has the full portal.
 const MODULES: { label: string; href?: string; tag?: string }[] = [
   { label: 'Production Portal', href: '/production', tag: 'OPEN' },
+  { label: '🌊 WAAVA', href: '/command-centre/waava', tag: 'LIVE' },
   { label: 'Customer Service', href: '/command-centre/agents/claudia-customer-service', tag: 'CLAUDIA' },
   { label: 'SEO', href: '/command-centre/agents/seo-agent', tag: 'LIVE' },
   { label: 'Marketing', href: '/command-centre/agents/marketing-agent', tag: 'LIVE' },
