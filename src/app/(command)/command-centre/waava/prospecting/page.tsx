@@ -1,152 +1,114 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { PageHeader } from '@/components/ui';
-import summary from '@/data/waava-summary.json';
-import venues from '@/data/waava-venues.json';
+import { createServiceClient } from '@/lib/supabase/service';
+import { ByState, ByCategory, Funnel } from '@/components/waava/Charts';
+import { ProspectBrowser, type Venue } from '@/components/waava/ProspectBrowser';
+import { SignedOnPartners } from '@/components/waava/SignedOnPartners';
 
 export const dynamic = 'force-dynamic';
 
-type Venue = {
-  id: string; name: string | null; category: string; state: string; city: string;
-  address: string | null; phone: string | null; email: string | null;
-  website: string | null; rating: number | null; reviews: number; stage: string;
-};
-
 const CAT_LABEL: Record<string, string> = {
-  bar: 'Bars', pub: 'Pubs', night_club: 'Clubs', restaurant: 'Restaurants',
-  cafe: 'Cafes', gym: 'Gyms', hotel: 'Hotels',
+  bar: 'Bars', pub: 'Pubs', nightclub: 'Clubs', restaurant: 'Restaurants', cafe: 'Cafes', gym: 'Gyms',
+  hotel: 'Hotels', hospital: 'Hospitals', university: 'Universities', train_station: 'Train stations',
+  stadium: 'Stadiums', theatre: 'Theatres', arts_centre: 'Arts centres', events_venue: 'Event venues',
+  airport: 'Airports', shopping_mall: 'Shopping malls',
 };
 const label = (c: string) => CAT_LABEL[c] || c;
+const B = '/command-centre/waava/prospecting';
+const COLS = 'id,name,category,tier,state,city,address,phone,email,website,stage,contacted,assigned_to,notes,registered_for_launch,signed_on,device';
 
 export default async function WaavaProspectingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ state?: string; cat?: string; email?: string }>;
+  searchParams: Promise<{ state?: string; cat?: string; email?: string; tier?: string }>;
 }) {
   await requireAdmin();
   const sp = await searchParams;
-  const all = venues as Venue[];
-  const cats: string[] = summary.categories;
-  const states: string[] = summary.states;
+  const svc = createServiceClient();
 
-  // filtered browse list
-  let list = all;
-  if (sp.state) list = list.filter((v) => v.state === sp.state);
-  if (sp.cat) list = list.filter((v) => v.category === sp.cat);
-  if (sp.email === '1') list = list.filter((v) => v.email);
-  list = [...list].sort((a, b) => (b.reviews || 0) - (a.reviews || 0));
-  const shown = list.slice(0, 250);
+  const { data: summary } = await svc.rpc('waava_summary');
+  const s = summary || { total: 0, premium: 0, standard: 0, with_phone: 0, with_email: 0, contactable: 0, by_state: [], by_category: [], funnel: { prospects: 0, contacted: 0, registered: 0, signed: 0 } };
+
+  let q = svc.from('waava_venues').select(COLS, { count: 'exact' });
+  if (sp.tier) q = q.eq('tier', sp.tier);
+  if (sp.state) q = q.eq('state', sp.state);
+  if (sp.cat) q = q.eq('category', sp.cat);
+  if (sp.email === '1') q = q.not('email', 'is', null);
+  const { data: venues, count } = await q.order('state').order('name').limit(300);
+
+  const { data: signed } = await svc.from('waava_venues').select(COLS).eq('signed_on', true).order('state');
+  const { data: staffRows } = await svc.from('profiles').select('full_name,email,role').in('role', ['admin', 'staff']);
+  const staff = (staffRows || []).map((p: { full_name: string | null; email: string }) => p.full_name || p.email);
+
+  const byCatStd = (s.by_category as { name: string; value: number; tier: string }[]).filter((c) => c.tier === 'standard').map((c) => ({ name: label(c.name), value: c.value }));
+  const byCatPrem = (s.by_category as { name: string; value: number; tier: string }[]).filter((c) => c.tier === 'premium').map((c) => ({ name: label(c.name), value: c.value }));
+  const funnelData = [
+    { name: 'Prospects', value: s.funnel.prospects }, { name: 'Contacted', value: s.funnel.contacted },
+    { name: 'Registered', value: s.funnel.registered }, { name: 'Signed on', value: s.funnel.signed },
+  ];
 
   const qs = (o: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    const merged = { state: sp.state, cat: sp.cat, email: sp.email, ...o };
-    Object.entries(merged).forEach(([k, v]) => { if (v) p.set(k, v); });
-    const s = p.toString();
-    return s ? `?${s}` : '';
+    Object.entries({ state: sp.state, cat: sp.cat, email: sp.email, tier: sp.tier, ...o }).forEach(([k, v]) => { if (v) p.set(k, v); });
+    const str = p.toString(); return str ? `?${str}` : '';
   };
-
   const STAT = [
-    { k: 'Total venues', v: summary.total },
-    { k: 'With phone', v: summary.with_phone },
-    { k: 'With email', v: summary.with_email },
-    { k: 'Contactable', v: summary.contactable },
+    { k: 'Total venues', v: s.total }, { k: 'Premium', v: s.premium }, { k: 'With phone', v: s.with_phone },
+    { k: 'With email', v: s.with_email }, { k: 'Signed on', v: s.funnel.signed },
   ];
+  const TIERS = [{ k: '', label: 'All' }, { k: 'standard', label: 'Standard' }, { k: 'premium', label: '💎 Premium' }];
+
+  if (!s.total) {
+    return (
+      <>
+        <PageHeader title="Venue Prospecting" subtitle="Live Australian venue database" />
+        <div className="card p-6 text-sm text-muted">The venue database is being loaded — refresh shortly.</div>
+      </>
+    );
+  }
 
   return (
     <>
-      <PageHeader title="Venue Prospecting" subtitle="B2B venue acquisition · live venue database" />
+      <PageHeader title="Venue Prospecting" subtitle="Live Australian venue database · suggest-only outreach" />
 
-      <div className="card p-4 mb-5 text-sm text-muted">
-        <strong>The pitch:</strong> zero cost, zero install, <strong>20% of rental revenue</strong>, we
-        supply &amp; maintain. Lead with transparency (ChargeUp hides its terms; we show the 20%). The
-        agent sources every contactable venue in Australia below — <strong>you approve &amp; send.</strong>
-      </div>
-
-      {/* headline stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {STAT.map((s) => (
-          <div key={s.k} className="card p-4 text-center">
-            <div className="text-2xl font-semibold tabular-nums">{s.v.toLocaleString()}</div>
-            <div className="text-[11px] uppercase tracking-wide text-muted mt-1">{s.k}</div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        {STAT.map((x) => (
+          <div key={x.k} className="card p-4 text-center">
+            <div className="text-2xl font-semibold tabular-nums">{Number(x.v).toLocaleString()}</div>
+            <div className="text-[11px] uppercase tracking-wide text-muted mt-1">{x.k}</div>
           </div>
         ))}
       </div>
 
-      {/* per-state x category matrix */}
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mb-2">Prospects by state &amp; category</h2>
-      <div className="card p-0 mb-6 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-muted border-b border-black/10">
-              <th className="p-3 font-medium">State</th>
-              {cats.map((c) => <th key={c} className="p-3 font-medium text-right">{label(c)}</th>)}
-              <th className="p-3 font-medium text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {states.map((st) => {
-              const row = (summary.matrix as Record<string, Record<string, number>>)[st];
-              return (
-                <tr key={st} className="border-b border-black/5 hover:bg-sand/40">
-                  <td className="p-3 font-medium">
-                    <Link href={`/command-centre/waava/prospecting?state=${st}`} className="hover:text-honey">{st}</Link>
-                  </td>
-                  {cats.map((c) => (
-                    <td key={c} className="p-3 text-right tabular-nums">
-                      <Link href={`/command-centre/waava/prospecting${qs({ state: st, cat: c })}`} className="hover:text-honey">{row[c] || 0}</Link>
-                    </td>
-                  ))}
-                  <td className="p-3 text-right tabular-nums font-semibold">{row.total}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="grid lg:grid-cols-2 gap-4 mb-4">
+        <div className="card p-4"><h3 className="text-sm font-semibold mb-3">Venues by state</h3><ByState data={s.by_state} /></div>
+        <div className="card p-4"><h3 className="text-sm font-semibold mb-3">Outreach funnel</h3><Funnel data={funnelData} /></div>
+      </div>
+      <div className="grid lg:grid-cols-2 gap-4 mb-6">
+        <div className="card p-4"><h3 className="text-sm font-semibold mb-3">Standard venues by type</h3><ByCategory data={byCatStd} /></div>
+        <div className="card p-4"><h3 className="text-sm font-semibold mb-3">💎 Premium venues by type</h3><ByCategory data={byCatPrem} /></div>
       </div>
 
-      {/* browse / filter */}
+      {/* signed-on partners */}
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mb-2">✅ Signed-on partners <span className="text-honey">({(signed || []).length})</span></h2>
+      <div className="mb-8"><SignedOnPartners venues={(signed || []) as Venue[]} /></div>
+
+      {/* browse + filter */}
       <div className="flex items-center flex-wrap gap-2 mb-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mr-2">Browse prospects</h2>
-        <Link href="/command-centre/waava/prospecting" className={`text-xs px-2 py-1 rounded ${!sp.state && !sp.cat && !sp.email ? 'bg-ink text-cream' : 'card'}`}>All</Link>
-        {sp.state && <span className="text-xs px-2 py-1 rounded card">{sp.state} ✕</span>}
-        {sp.cat && <span className="text-xs px-2 py-1 rounded card">{label(sp.cat)} ✕</span>}
-        <Link href={`/command-centre/waava/prospecting${qs({ email: sp.email === '1' ? undefined : '1' })}`} className={`text-xs px-2 py-1 rounded ${sp.email === '1' ? 'bg-ink text-cream' : 'card'}`}>Has email</Link>
-        <span className="text-xs text-muted ml-auto">{list.length.toLocaleString()} match · showing {shown.length}</span>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted mr-1">Browse &amp; work prospects</h2>
+        <div className="flex gap-1 mr-1">
+          {TIERS.map((t) => <Link key={t.label} href={`${B}${qs({ tier: t.k || undefined })}`} className={`text-xs px-2.5 py-1 rounded ${(sp.tier || '') === t.k ? 'bg-ink text-cream' : 'card'}`}>{t.label}</Link>)}
+        </div>
+        <Link href={B} className={`text-xs px-2 py-1 rounded ${!sp.state && !sp.cat && !sp.email && !sp.tier ? 'bg-ink text-cream' : 'card'}`}>Reset</Link>
+        {sp.state && <Link href={`${B}${qs({ state: undefined })}`} className="text-xs px-2 py-1 rounded card">{sp.state} ✕</Link>}
+        {sp.cat && <Link href={`${B}${qs({ cat: undefined })}`} className="text-xs px-2 py-1 rounded card">{label(sp.cat)} ✕</Link>}
+        <Link href={`${B}${qs({ email: sp.email === '1' ? undefined : '1' })}`} className={`text-xs px-2 py-1 rounded ${sp.email === '1' ? 'bg-ink text-cream' : 'card'}`}>Has email</Link>
+        <span className="text-xs text-muted ml-auto">{(count || 0).toLocaleString()} match · showing {(venues || []).length} · click a row to open</span>
       </div>
-      <div className="card p-0 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-muted border-b border-black/10">
-              <th className="p-2.5 font-medium">Venue</th>
-              <th className="p-2.5 font-medium">Cat</th>
-              <th className="p-2.5 font-medium">City</th>
-              <th className="p-2.5 font-medium">Phone</th>
-              <th className="p-2.5 font-medium">Email</th>
-              <th className="p-2.5 font-medium text-right">★</th>
-            </tr>
-          </thead>
-          <tbody>
-            {shown.map((v) => (
-              <tr key={v.id} className="border-b border-black/5 hover:bg-sand/40">
-                <td className="p-2.5">
-                  {v.website ? <a href={v.website} target="_blank" rel="noreferrer" className="font-medium hover:text-honey">{v.name}</a> : <span className="font-medium">{v.name}</span>}
-                </td>
-                <td className="p-2.5 text-muted">{label(v.category)}</td>
-                <td className="p-2.5 text-muted">{v.city}</td>
-                <td className="p-2.5 tabular-nums">{v.phone || <span className="text-muted">—</span>}</td>
-                <td className="p-2.5">{v.email || <span className="text-muted">—</span>}</td>
-                <td className="p-2.5 text-right tabular-nums text-muted">{v.rating ?? '—'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <ProspectBrowser venues={(venues || []) as Venue[]} staff={staff} />
 
-      <p className="text-xs text-muted mt-4">
-        Generated {new Date(summary.generated_at).toLocaleString('en-AU', { timeZone: 'Australia/Sydney' })} AEST ·
-        full CSV export at <code>~/waava-brain/arms/prospecting/waava_prospects.csv</code>.
-        <Link href="/command-centre/waava" className="text-honey hover:underline ml-2">← WAAVA home</Link>
-      </p>
+      <p className="text-xs text-muted mt-4">Click any venue to add notes, mark contacted, assign an owner, or sign them on + pick a device. <Link href="/command-centre/waava" className="text-honey hover:underline ml-1">← WAAVA home</Link></p>
     </>
   );
 }
