@@ -17,6 +17,7 @@ const ADMIN_LINKS = [
   { href: '/billing', label: 'Billing' },
   { href: '/settings/users', label: 'Users & Settings' },
   { href: '/command-centre', label: '⌘ Command Centre' },
+  { href: '/waava', label: '🌊 WAAVA' },
 ];
 export function Nav({ role }: { role: Role }) {
   const pathname = usePathname();
