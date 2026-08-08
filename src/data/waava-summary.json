@@ -1,0 +1,124 @@
+{
+  "generated_at": "2026-08-08T04:39:36.739Z",
+  "total": 5705,
+  "with_phone": 5116,
+  "with_email": 0,
+  "contactable": 5116,
+  "categories": [
+    "bar",
+    "cafe",
+    "gym",
+    "hotel",
+    "night_club",
+    "pub",
+    "restaurant"
+  ],
+  "states": [
+    "ACT",
+    "NSW",
+    "NT",
+    "QLD",
+    "SA",
+    "TAS",
+    "VIC",
+    "WA"
+  ],
+  "matrix": {
+    "ACT": {
+      "total": 333,
+      "phone": 290,
+      "email": 0,
+      "bar": 60,
+      "cafe": 57,
+      "gym": 60,
+      "hotel": 59,
+      "night_club": 30,
+      "pub": 17,
+      "restaurant": 50
+    },
+    "NSW": {
+      "total": 1148,
+      "phone": 1049,
+      "email": 0,
+      "bar": 209,
+      "cafe": 204,
+      "gym": 209,
+      "hotel": 216,
+      "night_club": 62,
+      "pub": 53,
+      "restaurant": 195
+    },
+    "NT": {
+      "total": 268,
+      "phone": 236,
+      "email": 0,
+      "bar": 60,
+      "cafe": 49,
+      "gym": 50,
+      "hotel": 58,
+      "night_club": 3,
+      "pub": 5,
+      "restaurant": 43
+    },
+    "QLD": {
+      "total": 1562,
+      "phone": 1420,
+      "email": 0,
+      "bar": 300,
+      "cafe": 263,
+      "gym": 268,
+      "hotel": 292,
+      "night_club": 108,
+      "pub": 112,
+      "restaurant": 219
+    },
+    "SA": {
+      "total": 374,
+      "phone": 316,
+      "email": 0,
+      "bar": 60,
+      "cafe": 55,
+      "gym": 60,
+      "hotel": 60,
+      "night_club": 43,
+      "pub": 40,
+      "restaurant": 56
+    },
+    "TAS": {
+      "total": 531,
+      "phone": 479,
+      "email": 0,
+      "bar": 120,
+      "cafe": 90,
+      "gym": 92,
+      "hotel": 111,
+      "night_club": 5,
+      "pub": 26,
+      "restaurant": 87
+    },
+    "VIC": {
+      "total": 911,
+      "phone": 834,
+      "email": 0,
+      "bar": 180,
+      "cafe": 142,
+      "gym": 175,
+      "hotel": 167,
+      "night_club": 55,
+      "pub": 66,
+      "restaurant": 126
+    },
+    "WA": {
+      "total": 578,
+      "phone": 492,
+      "email": 0,
+      "bar": 118,
+      "cafe": 96,
+      "gym": 76,
+      "hotel": 108,
+      "night_club": 54,
+      "pub": 39,
+      "restaurant": 87
+    }
+  }
+}
