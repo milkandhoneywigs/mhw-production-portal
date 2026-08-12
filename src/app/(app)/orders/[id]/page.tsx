@@ -5,6 +5,7 @@ import { StageBadge, StatusBadge, OrderTypeBadge, RiskBadge, Flag } from '@/comp
 import { InstructionButton } from '@/components/order/InstructionButton';
 import { StatusSelect } from '@/components/order/StatusSelect';
 import { DeleteOrderButton } from '@/components/order/DeleteOrderButton';
+import { ArchiveOrderButton } from '@/components/order/ArchiveOrderButton';
 import { calculateRiskLevel, isShipmentBlocked } from '@/lib/business/risk';
 import { OrderMessages } from '@/components/order/OrderMessages';
 import { supplierShippingInstruction, STAGE_NOTE, STAGE_LABELS, STATUS_LABELS, stageOf } from '@/lib/constants';
@@ -196,7 +197,8 @@ export default async function OrderDetailPage({ params }: { params: { id: string
             <StatusSelect orderId={o.id} current={o.status} orderType={o.order_type} />
             {isAdmin && <Row label="Supplier" value={(supplier as Supplier | null)?.name} />}
             <InstructionButton orderId={o.id} />
-            <div className="pt-3 border-t border-beige">
+            <div className="pt-3 border-t border-beige space-y-3">
+              <ArchiveOrderButton orderId={o.id} archived={!!o.archived_at} />
               <DeleteOrderButton orderId={o.id} orderNumber={o.order_number} />
             </div>
           </div>

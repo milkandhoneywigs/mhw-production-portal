@@ -13,7 +13,7 @@ export default async function DashboardPage() {
   const supabase = createClient();
 
   const [{ data: allOrders }, { data: invoices }] = await Promise.all([
-    supabase.from('orders').select('*').order('created_at', { ascending: false }),
+    supabase.from('orders').select('*').is('archived_at', null).order('created_at', { ascending: false }),
     supabase.from('invoices').select('*').in('status', ['uploaded', 'payment_required', 'disputed']),
   ]);
   const orders = (allOrders ?? []) as Order[];

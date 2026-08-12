@@ -14,6 +14,7 @@ export default async function QcQueuePage() {
   const { data } = await supabase
     .from('orders')
     .select('*, customer:customers(full_name)')
+    .is('archived_at', null)
     .in('status', ['arrived_at_showroom', 'qc_required'])
     .order('arrived_at_showroom_at', { ascending: true });
   const orders = (data ?? []) as OrderWithRelations[];

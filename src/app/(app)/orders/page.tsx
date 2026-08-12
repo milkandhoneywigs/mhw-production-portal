@@ -5,6 +5,7 @@ import { PageHeader, EmptyState } from '@/components/ui';
 import { StageBadge, OrderTypeBadge, RiskBadge } from '@/components/Badges';
 import { STAGE_STATUSES, STAGE_LABELS, type Stage } from '@/lib/constants';
 import type { OrderWithRelations } from '@/lib/types';
+import { unarchiveOrder } from '@/app/actions/orders';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,16 +19,21 @@ const BUCKET_STATUSES: Record<string, string[]> = {
   ready_dispatch: ['ready_to_dispatch'],
 };
 
-export default async function OrdersPage({ searchParams }: { searchParams: { bucket?: string; q?: string; stage?: string; channel?: string } }) {
+export default async function OrdersPage({ searchParams }: { searchParams: { bucket?: string; q?: string; stage?: string; channel?: string; archived?: string } }) {
   const profile = await requireStaff();
   const isAdmin = profile.role === 'admin'; // supplier name is admin-only
   const supabase = createClient();
+
+  // Archived orders (fulfilled / supplier-finished) are removed from every active
+  // view; the Archived toggle surfaces them again so they can be reviewed/restored.
+  const showArchived = searchParams.archived === '1';
 
   let query = supabase
     .from('orders')
     .select('*, customer:customers(*), supplier:suppliers(*)')
     .order('created_at', { ascending: false })
     .limit(200);
+  query = showArchived ? query.not('archived_at', 'is', null) : query.is('archived_at', null);
 
   const stage = searchParams.stage as Stage | undefined;
   const bucket = searchParams.bucket;
@@ -54,8 +60,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
   return (
     <>
       <PageHeader
-        title="Production Orders"
-        subtitle={q ? `Search "${q}" — ${orders.length} result(s)`
+        title={showArchived ? 'Archived Orders' : 'Production Orders'}
+        subtitle={showArchived ? `Fulfilled / finished orders removed from the active portal (${orders.length}) — restore any if needed`
+          : q ? `Search "${q}" — ${orders.length} result(s)`
           : stage ? `${channel === 'online' ? 'Online · ' : channel === 'instore' ? 'In-store · ' : ''}${STAGE_LABELS[stage]} — ${orders.length}`
           : channel ? `${channel === 'online' ? 'Online' : 'In-store'} orders (${orders.length})`
           : bucket ? `Filtered: ${bucket.replace('_', ' ')}` : `All orders (${orders.length})`}
@@ -66,6 +73,9 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
               <input name="q" defaultValue={searchParams.q ?? ''} placeholder="Search order #, customer, style…" className="input w-64" />
               <button type="submit" className="btn-secondary">Search</button>
             </form>
+            {showArchived
+              ? <Link href="/orders" className="btn-secondary">← Active orders</Link>
+              : <Link href="/orders?archived=1" className="btn-secondary">Archived</Link>}
             <Link href="/orders/restock" className="btn-secondary">Store Restock Order</Link>
             <Link href="/orders/new" className="btn-primary">Add Order</Link>
           </div>
@@ -86,6 +96,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
                 {isAdmin && <th className="th">Supplier</th>}
                 <th className="th">Status</th>
                 <th className="th">Flags</th>
+                {showArchived && <th className="th"></th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-beige">
@@ -104,6 +115,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: { buc
                   {isAdmin && <td className="td">{o.supplier?.name ?? <span className="text-muted">Unassigned</span>}</td>}
                   <td className="td"><StageBadge status={o.status} /></td>
                   <td className="td"><RiskBadge level={o.risk_level} /></td>
+                  {showArchived && (
+                    <td className="td">
+                      <form action={async () => { 'use server'; await unarchiveOrder(o.id); }}>
+                        <button type="submit" className="btn-secondary text-xs">Restore</button>
+                      </form>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

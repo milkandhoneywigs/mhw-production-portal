@@ -13,7 +13,7 @@ export default async function CustomerUpdatesPage() {
   const supabase = createClient();
   const [{ data: updates }, { data: orders }] = await Promise.all([
     supabase.from('customer_updates').select('*, order:orders(order_number)').order('created_at', { ascending: false }),
-    supabase.from('orders').select('id, order_number').neq('status', 'completed').order('created_at', { ascending: false }).limit(200),
+    supabase.from('orders').select('id, order_number').is('archived_at', null).neq('status', 'completed').order('created_at', { ascending: false }).limit(200),
   ]);
   const rows = (updates ?? []) as Row[];
   const pending = rows.filter((r) => r.status === 'draft' || r.status === 'approved');

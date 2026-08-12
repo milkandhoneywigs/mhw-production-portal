@@ -29,7 +29,7 @@ const IN_PROD = new Set(['in_production', 'production_update_due']);
 export async function getLiveOps(sb: SupabaseClient): Promise<LiveOps> {
   const [{ data: invoices }, { data: orders }] = await Promise.all([
     sb.from('invoices').select('invoice_type,status,amount,created_at'),
-    sb.from('orders').select('order_number,status,risk_level,expected_completion_date,production_complete_at,supplier_price,created_at'),
+    sb.from('orders').select('order_number,status,risk_level,expected_completion_date,production_complete_at,supplier_price,created_at').is('archived_at', null),
   ]);
   const inv = (invoices ?? []) as { invoice_type: string; status: string; amount: number | null; created_at: string }[];
   const ord = (orders ?? []) as { order_number: string; status: string; risk_level: string | null; expected_completion_date: string | null; production_complete_at: string | null; supplier_price: number | null }[];

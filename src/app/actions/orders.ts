@@ -191,6 +191,44 @@ export async function saveOrderFields(orderId: string, formData: FormData) {
   return {};
 }
 
+// Archive an order = "remove from portal" but keep the record (reversible).
+// Archived orders drop out of every active list, dashboard, QC queue, command
+// centre metrics and the supplier view; they remain visible under /orders?archived=1.
+export async function archiveOrder(orderId: string, reason?: string) {
+  const profile = await requireStaff();
+  const supabase = createClient();
+  const { data: ord } = await supabase.from('orders').select('order_number').eq('id', orderId).single();
+  const { error } = await supabase
+    .from('orders')
+    .update({ archived_at: new Date().toISOString(), archived_reason: reason ?? null })
+    .eq('id', orderId);
+  if (error) return { error: error.message };
+  await logAudit({
+    actorId: profile.id, action: 'order.archive', entityType: 'order', entityId: orderId,
+    metadata: { order_number: ord?.order_number, reason: reason ?? null },
+  });
+  revalidatePath('/orders');
+  revalidatePath('/dashboard');
+  revalidatePath(`/orders/${orderId}`);
+  return {};
+}
+
+// Restore an archived order back into the active portal.
+export async function unarchiveOrder(orderId: string) {
+  const profile = await requireStaff();
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('orders')
+    .update({ archived_at: null, archived_reason: null })
+    .eq('id', orderId);
+  if (error) return { error: error.message };
+  await logAudit({ actorId: profile.id, action: 'order.unarchive', entityType: 'order', entityId: orderId });
+  revalidatePath('/orders');
+  revalidatePath('/dashboard');
+  revalidatePath(`/orders/${orderId}`);
+  return {};
+}
+
 // Delete an order (staff/admin). Cascades history/updates/invoices/tracking/qc/files.
 export async function deleteOrder(orderId: string) {
   const profile = await requireStaff();
